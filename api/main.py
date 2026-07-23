@@ -20,6 +20,7 @@ from api.db import Database
 from api.middleware import RequestLogMiddleware
 from api.routes.analyze import router as analyze_router
 from api.routes.backtest_stats import router as backtest_router
+from api.routes.calibrate import router as calibrate_router
 from api.routes.health import router as health_router
 from api.routes.history import router as history_router
 from api.routes.pairs import router as pairs_router
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(scan_router)
     app.include_router(history_router)
     app.include_router(backtest_router)
+    app.include_router(calibrate_router)
     app.include_router(pairs_router)
 
     @app.get("/")

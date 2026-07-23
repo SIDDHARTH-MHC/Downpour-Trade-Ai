@@ -70,6 +70,18 @@ export type BacktestStatsResponse = {
   >;
 };
 
+export type CalibrateStatusResponse = {
+  status?: string;
+  running: boolean;
+  progress: string;
+  last_calibrated_utc: string;
+  last_error?: string;
+  bucket_count?: number;
+  buckets?: BacktestStatsResponse["buckets"];
+  message?: string;
+  data_as_of_utc: string;
+};
+
 export type PairsResponse = {
   data_as_of_utc: string;
   pairs: Array<{ symbol: string; volume?: number; updated_at?: string }>;
@@ -105,5 +117,15 @@ export const api = {
     fetchJson<BacktestStatsResponse>(
       `/backtest-stats?symbol=${encodeURIComponent(symbol)}&tf=${tf}`
     ),
+  calibrateStatus: () => fetchJson<CalibrateStatusResponse>("/calibrate"),
+  startCalibrate: (months = 6, symbols = "BTC/USDT,ETH/USDT", tf = "1h") =>
+    fetch(`${API_URL}/calibrate?months=${months}&symbols=${encodeURIComponent(symbols)}&tf=${tf}`, {
+      method: "POST",
+      cache: "no-store",
+    }).then(async (res) => {
+      const body = (await res.json()) as CalibrateStatusResponse;
+      if (!res.ok) throw new Error(body.message || `Calibration failed: ${res.status}`);
+      return body;
+    }),
   pairs: (limit = 50) => fetchJson<PairsResponse>(`/pairs?limit=${limit}`),
 };

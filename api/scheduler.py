@@ -138,6 +138,63 @@ def refresh_pairs() -> None:
     db.set_meta("pairs_refreshed_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
 
 
+_calibrate_lock = threading.Lock()
+_calibrate_running = False
+
+
+def calibration_status() -> dict:
+    db = Database()
+    return {
+        "running": _calibrate_running,
+        "progress": db.get_meta("calibrate_progress", ""),
+        "last_calibrated_utc": db.get_meta("last_calibrated_utc", "never"),
+        "last_error": db.get_meta("calibrate_error", ""),
+    }
+
+
+def run_calibration_sync(symbols: list[str], tf: str, months: int) -> dict:
+    global _calibrate_running
+    if not _calibrate_lock.acquire(blocking=False):
+        db = Database()
+        return db.load_calibration()
+
+    _calibrate_running = True
+    db = Database()
+    try:
+        db.set_meta("calibrate_progress", f"starting:{','.join(symbols)}")
+        db.set_meta("calibrate_error", "")
+        stats = rebuild_calibration(symbols, tf, months)
+        db.save_calibration(stats)
+        db.set_meta("last_calibrated_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
+        db.set_meta("calibrate_progress", "done")
+        logger.info("calibration complete: %s buckets", len(stats))
+        return stats
+    except Exception as exc:  # noqa: BLE001
+        db.set_meta("calibrate_error", str(exc))
+        db.set_meta("calibrate_progress", "failed")
+        logger.exception("calibration failed")
+        raise
+    finally:
+        _calibrate_running = False
+        _calibrate_lock.release()
+
+
+def run_calibration_async(symbols: list[str], tf: str, months: int) -> None:
+    thread = threading.Thread(
+        target=_run_calibration_safe,
+        kwargs={"symbols": symbols, "tf": tf, "months": months},
+        daemon=True,
+    )
+    thread.start()
+
+
+def _run_calibration_safe(symbols: list[str], tf: str, months: int) -> None:
+    try:
+        run_calibration_sync(symbols, tf, months)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def refresh_calibration() -> None:
     db = Database()
     stats = rebuild_calibration(["BTC/USDT", "ETH/USDT"], "1h", 12)
