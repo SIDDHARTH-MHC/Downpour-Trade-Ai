@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-surface text-slate-100 antialiased;
+}
+
+.card {
+  @apply rounded-xl border border-border bg-panel p-4 shadow-lg;
+}
+
+.skeleton {
+  @apply animate-pulse rounded bg-border/60;
+}

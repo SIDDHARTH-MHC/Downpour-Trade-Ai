@@ -1,0 +1,68 @@
+"""End-to-end analysis orchestration."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from engine.calibration import apply_confidence
+from engine.config import EngineConfig, load_config
+from engine.data import DataLayer
+from engine.lanes.flow import analyze_flow
+from engine.lanes.regime import analyze_regime
+from engine.lanes.structure import analyze_structure
+from engine.lanes.technical import analyze_technical
+from engine.models import Verdict
+from engine.risk import build_trade_plan
+from engine.synthesizer import synthesize
+
+
+def analyze_symbol(
+    symbol: str,
+    tf: str = "1h",
+    *,
+    patient: bool = False,
+    equity_usd: float | None = None,
+    config: EngineConfig | None = None,
+) -> Verdict:
+    cfg = config or load_config()
+    data = DataLayer(cfg)
+
+    df = data.get_ohlcv(symbol, tf)
+    htf = data.get_ohlcv(symbol, DataLayer.htf_timeframe(tf, cfg.technical.htf_multiplier), validate=False)
+    df_4h = data.get_ohlcv(symbol, "4h", validate=False)
+
+    funding = data.get_funding(symbol)
+    oi = data.get_oi(symbol, tf)
+    book = data.get_book(symbol)
+    trades = data.get_trades(symbol)
+
+    btc_df = None
+    if symbol.split("/")[0] != "BTC":
+        try:
+            btc_df = data.get_ohlcv("BTC/USDT", "1h", bars=10, validate=False)
+        except Exception:
+            btc_df = None
+
+    technical = analyze_technical(df, htf, cfg)
+    flow = analyze_flow(df, funding, oi, trades, cfg)
+    structure = analyze_structure(df, book, symbol, cfg)
+    regime = analyze_regime(df, df_4h, symbol, btc_df, cfg, tf=tf)
+
+    verdict = synthesize([technical, flow, structure], regime, cfg)
+
+    mid_price: float | None = None
+    try:
+        mid_price = data.get_mid_price(symbol)
+    except Exception:
+        mid_price = float(df["close"].iloc[-1])
+
+    verdict = build_trade_plan(
+        verdict, df, patient=patient, equity_usd=equity_usd, mid_price=mid_price, config=cfg
+    )
+    verdict = apply_confidence(verdict, config=cfg)
+
+    last_ts = int(df["timestamp"].iloc[-1])
+    verdict.symbol = symbol
+    verdict.timeframe = tf
+    verdict.timestamp = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return verdict
