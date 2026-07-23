@@ -2,7 +2,7 @@
   "name": "downpour-trade-ai",
   "private": true,
   "scripts": {
-    "vercel-build": "npm install --prefix web && npm run build --prefix web"
+    "vercel-build": "cd web && npm install && npm run build"
   },
   "dependencies": {
     "next": "14.2.35"
