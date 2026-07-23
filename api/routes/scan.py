@@ -15,7 +15,7 @@ def scan(
     request: Request,
     tf: str = Query("1h"),
     refresh: bool = Query(False),
-    limit: int = Query(8, ge=1, le=20),
+    limit: int = Query(5, ge=1, le=20),
 ) -> dict:
     db = Database()
     status = scan_status()
@@ -61,6 +61,7 @@ def scan(
         "request_id": getattr(request.state, "request_id", None),
         "last_scan_utc": status["last_scan_utc"],
         "scan_running": status["running"],
+        "scan_progress": status.get("progress", ""),
         "total": len(results),
         "actionable_count": len(actionable),
         "results": results,

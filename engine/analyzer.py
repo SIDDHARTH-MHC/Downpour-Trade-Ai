@@ -22,19 +22,22 @@ def analyze_symbol(
     *,
     patient: bool = False,
     equity_usd: float | None = None,
+    light: bool = False,
     config: EngineConfig | None = None,
 ) -> Verdict:
     cfg = config or load_config()
     data = DataLayer(cfg)
+    bars = 200 if light else cfg.data.ohlcv_bars
+    book_limit = 50 if light else 500
 
-    df = data.get_ohlcv(symbol, tf)
-    htf = data.get_ohlcv(symbol, DataLayer.htf_timeframe(tf, cfg.technical.htf_multiplier), validate=False)
-    df_4h = data.get_ohlcv(symbol, "4h", validate=False)
+    df = data.get_ohlcv(symbol, tf, bars=bars)
+    htf = data.get_ohlcv(symbol, DataLayer.htf_timeframe(tf, cfg.technical.htf_multiplier), bars=bars, validate=False)
+    df_4h = data.get_ohlcv(symbol, "4h", bars=bars, validate=False)
 
     funding = data.get_funding(symbol)
     oi = data.get_oi(symbol, tf)
-    book = data.get_book(symbol)
-    trades = data.get_trades(symbol)
+    book = data.get_book(symbol, limit=book_limit)
+    trades = [] if light else data.get_trades(symbol)
 
     btc_df = None
     if symbol.split("/")[0] != "BTC":
@@ -51,10 +54,13 @@ def analyze_symbol(
     verdict = synthesize([technical, flow, structure], regime, cfg)
 
     mid_price: float | None = None
-    try:
-        mid_price = data.get_mid_price(symbol)
-    except Exception:
+    if light:
         mid_price = float(df["close"].iloc[-1])
+    else:
+        try:
+            mid_price = data.get_mid_price(symbol)
+        except Exception:
+            mid_price = float(df["close"].iloc[-1])
 
     verdict = build_trade_plan(
         verdict, df, patient=patient, equity_usd=equity_usd, mid_price=mid_price, config=cfg

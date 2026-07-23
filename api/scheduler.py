@@ -28,6 +28,7 @@ def scan_status() -> dict:
     return {
         "running": _scan_running,
         "last_scan_utc": db.get_meta("last_scan_utc", "never"),
+        "progress": db.get_meta("scan_progress", ""),
     }
 
 
@@ -89,13 +90,15 @@ def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
         hits: list[dict] = []
 
         logger.info("starting scan: %s pairs @ %s", len(pairs), tf)
-        for symbol in pairs:
+        for i, symbol in enumerate(pairs, start=1):
             try:
-                verdict = analyze_symbol(symbol, tf, config=config)
+                db.set_meta("scan_progress", f"{i}/{len(pairs)}:{symbol}")
+                verdict = analyze_symbol(symbol, tf, light=True, config=config)
                 payload = verdict.to_dict()
                 payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                 db.save_verdict(payload)
                 results.append(payload)
+                db.save_scan(tf, results)
                 if payload["action"] != "NO_TRADE":
                     hits.append(payload)
             except Exception as exc:  # noqa: BLE001
@@ -103,6 +106,7 @@ def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
 
         db.save_scan(tf, results)
         db.set_meta("last_scan_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
+        db.set_meta("scan_progress", "done")
         try:
             asyncio.run(alert_scan_hits(hits))
         except Exception as exc:  # noqa: BLE001

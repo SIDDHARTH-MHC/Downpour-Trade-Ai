@@ -1,13 +1,13 @@
 "use client";
 
 import useSWR from "swr";
-import { api } from "@/lib/api";
+import { api, ScanResponse } from "@/lib/api";
 import { PairTable } from "@/components/PairTable";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 
 export default function DashboardPage() {
-  const { data, error, isLoading } = useSWR("scan-1h", () => api.scan("1h"), {
-    refreshInterval: 60_000,
+  const { data, error, isLoading } = useSWR<ScanResponse>("scan-1h", () => api.scan("1h"), {
+    refreshInterval: (latest) => (latest?.scan_running ? 10_000 : 60_000),
   });
 
   return (
@@ -24,18 +24,21 @@ export default function DashboardPage() {
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
-      {data && data.total === 0 && !data.scan_running && (
+      {data && data.scan_running && (
         <p className="text-sm text-amber-400">
-          No scan data yet. First scan runs automatically after deploy — refresh in 1-2 minutes.
+          Scan in progress… {data.scan_progress ? `(${data.scan_progress})` : ""} Each pair takes ~20–40s on free tier.
         </p>
       )}
-      {data && data.scan_running && (
-        <p className="text-sm text-amber-400">Scan in progress…</p>
+      {data && data.total === 0 && !data.scan_running && (
+        <p className="text-sm text-amber-400">
+          No scan data yet. First scan runs automatically after deploy — refresh in 1–2 minutes.
+        </p>
       )}
       {data && data.total > 0 && (
         <>
           <p className="text-sm text-muted">
             {data.total} pairs · {data.actionable_count} actionable signals
+            {data.last_scan_utc ? ` · last scan ${data.last_scan_utc}` : ""}
           </p>
           <PairTable results={data.results} />
         </>

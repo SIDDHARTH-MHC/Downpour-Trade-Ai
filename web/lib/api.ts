@@ -40,6 +40,7 @@ export type ScanResponse = {
   message?: string;
   last_scan_utc?: string;
   scan_running?: boolean;
+  scan_progress?: string;
   total: number;
   actionable_count: number;
   results: Verdict[];

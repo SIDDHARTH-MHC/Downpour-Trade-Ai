@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     telegram_chat_id: str = ""
     scan_interval_min: int = 15
     top_pairs_count: int = 20
-    scan_pair_limit: int = 8
+    scan_pair_limit: int = 5
     verdict_cache_ttl_sec: int = 60
     orderbook_cache_ttl_sec: int = 10
     rate_limit_per_minute: int = 30
