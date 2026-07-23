@@ -47,6 +47,13 @@ Deploy `web/` to Vercel with `NEXT_PUBLIC_API_URL` pointing at your API.
 
 **Option B:** Leave Root Directory blank — root `package.json` + `vercel.json` run the build from `web/` automatically.
 
+## Deploy checklist (fix "Failed to fetch")
+
+1. **Render API** (Singapore) must be live. Test: `curl https://YOUR-SERVICE.onrender.com/health`
+2. **Vercel env var:** `NEXT_PUBLIC_API_URL` = `https://YOUR-SERVICE.onrender.com` → **Redeploy** (public vars are baked at build time)
+3. **Render env var:** `ALLOWED_ORIGINS` = `https://downpour-trade-ai-virid.vercel.app,http://localhost:3000` → Redeploy API
+4. First request to Render free tier may take 30–60s (cold start)
+
 ## Architecture
 
 ```

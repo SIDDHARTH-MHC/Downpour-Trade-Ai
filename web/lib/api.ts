@@ -70,14 +70,22 @@ export type PairsResponse = {
   pairs: Array<{ symbol: string; volume?: number; updated_at?: string }>;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 0 } });
-  if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status}`);
+  const url = `${API_URL}${path}`;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`API ${path} failed: ${res.status} (${API_URL})`);
+    }
+    return res.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("API")) throw err;
+    throw new Error(
+      `Cannot reach API at ${API_URL}. Set NEXT_PUBLIC_API_URL on Vercel and ALLOWED_ORIGINS on Render, then redeploy both.`
+    );
   }
-  return res.json() as Promise<T>;
 }
 
 export const api = {
