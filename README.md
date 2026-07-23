@@ -43,6 +43,10 @@ npm run dev
 
 Deploy `web/` to Vercel with `NEXT_PUBLIC_API_URL` pointing at your API.
 
+**Option A (recommended):** Vercel Project Settings → General → **Root Directory** → `web`
+
+**Option B:** Leave Root Directory blank — root `package.json` + `vercel.json` run the build from `web/` automatically.
+
 ## Architecture
 
 ```
