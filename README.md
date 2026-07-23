@@ -32,6 +32,8 @@ Deploy `api/` to Railway or Render (Singapore/EU region). Set env vars:
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — optional alerts
 - `SCAN_INTERVAL_MIN`, `TOP_PAIRS_COUNT`
 
+**Recommended for production:** [Hetzner deploy guide](deploy/hetzner/DEPLOY.md) — 4 GB RAM for ~€4–6/mo (Docker + Caddy + HTTPS).
+
 ## Web (Phase 2)
 
 ```bash
