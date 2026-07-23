@@ -57,6 +57,23 @@ def _taker_score(trades: list[dict], cfg) -> tuple[float, str]:
     return 0.0, f"taker buy ratio={ratio:.2f} neutral (0)"
 
 
+def _funding_zscore(history: list[dict], current_rate: float | None, cfg) -> tuple[float, str]:
+    if current_rate is None or len(history) < cfg.funding_zscore_min_samples:
+        return 0.0, "funding z-score unavailable (0)"
+    rates = [float(h.get("fundingRate", 0)) for h in history]
+    mean = sum(rates) / len(rates)
+    variance = sum((r - mean) ** 2 for r in rates) / len(rates)
+    std = variance ** 0.5
+    if std <= 0:
+        return 0.0, f"funding z-score std=0 (0)"
+    z = (current_rate - mean) / std
+    if z < -cfg.funding_zscore_threshold:
+        return cfg.funding_zscore_bull, f"funding z={z:.2f} extreme short crowding (+{cfg.funding_zscore_bull:.0f})"
+    if z > cfg.funding_zscore_threshold:
+        return cfg.funding_zscore_bear, f"funding z={z:.2f} extreme long crowding ({cfg.funding_zscore_bear:.0f})"
+    return 0.0, f"funding z={z:.2f} neutral (0)"
+
+
 def analyze_flow(
     df: pd.DataFrame,
     funding: dict,
@@ -81,6 +98,16 @@ def analyze_flow(
     ft, fte = _funding_trend(funding.get("history", []), price_change, cfg)
     score += ft
     evidence.append(fte)
+
+    fz, fze = _funding_zscore(funding.get("history", []), rate, cfg)
+    score += fz
+    evidence.append(fze)
+    if rate is not None and len(funding.get("history", [])) >= cfg.funding_zscore_min_samples:
+        rates = [float(h.get("fundingRate", 0)) for h in funding.get("history", [])]
+        mean = sum(rates) / len(rates)
+        std = (sum((r - mean) ** 2 for r in rates) / len(rates)) ** 0.5
+        if std > 0:
+            values["funding_zscore"] = (rate - mean) / std
 
     oi_change = 0.0
     if len(oi_df) >= 24 and "openInterestValue" in oi_df.columns:

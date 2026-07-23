@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from engine.calibration import apply_confidence
 from engine.config import EngineConfig, load_config
 from engine.data import DataLayer
+from engine.explanation import build_explanation
 from engine.lanes.flow import analyze_flow
 from engine.lanes.regime import analyze_regime
 from engine.lanes.structure import analyze_structure
@@ -66,6 +67,7 @@ def analyze_symbol(
         verdict, df, patient=patient, equity_usd=equity_usd, mid_price=mid_price, config=cfg
     )
     verdict = apply_confidence(verdict, config=cfg)
+    verdict.explanation = build_explanation(verdict)
 
     last_ts = int(df["timestamp"].iloc[-1])
     verdict.symbol = symbol

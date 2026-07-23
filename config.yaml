@@ -45,6 +45,10 @@ flow:
   taker_bull_ratio: 0.58
   taker_bear_ratio: 0.42
   raw_scale: 1.5
+  funding_zscore_bull: 15
+  funding_zscore_bear: -15
+  funding_zscore_threshold: 2.0
+  funding_zscore_min_samples: 10
 
 structure:
   swing_fractal: 5
@@ -67,6 +71,12 @@ structure:
   bid_ask_ratio_low: 0.5
   wall_max_contribution: 30
   min_touch_breakout: 3
+  vp_bins: 100
+  vp_hvn_percentile: 70
+  vp_lvn_percentile: 20
+  vp_poc_above_score: 10
+  vp_poc_below_score: -10
+  vp_clean_air_score: 5
 
 regime:
   shock_percentile: 90
@@ -113,6 +123,11 @@ backtest:
   fee_pct: 0.001
   slippage_pct: 0.0005
   default_months: 12
+  walk_forward_train_months: 6
+  walk_forward_val_months: 2
+  walk_forward_roll_months: 2
+  walk_forward_min_folds: 4
+  oos_pf_ratio_min: 0.7
 
 calibration:
   high_win_rate: 0.55

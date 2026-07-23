@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from engine.config import EngineConfig, load_config
+from engine.explanation import build_explanation
 from engine.models import LaneResult, RegimeResult, Verdict
 
 
@@ -22,7 +23,7 @@ def synthesize(
     scored_lanes = [lane for lane in lanes if lane.name in {"technical", "flow", "structure"}]
 
     if not regime.tradeable or regime.regime == "SHOCK":
-        return Verdict(
+        verdict = Verdict(
             action="NO_TRADE",
             weighted_score=0.0,
             lanes=lanes,
@@ -31,6 +32,8 @@ def synthesize(
             trade_plan=None,
             reasons=[f"regime={regime.regime} → forced NO-TRADE"],
         )
+        verdict.explanation = build_explanation(verdict)
+        return verdict
 
     weighted_sum = 0.0
     weight_total = 0.0
@@ -88,7 +91,7 @@ def synthesize(
         if adverse_long or adverse_short:
             reasons.append("adverse lane score present")
 
-    return Verdict(
+    verdict = Verdict(
         action=action,
         weighted_score=weighted_score,
         lanes=lanes,
@@ -97,3 +100,5 @@ def synthesize(
         trade_plan=None,
         reasons=reasons,
     )
+    verdict.explanation = build_explanation(verdict)
+    return verdict

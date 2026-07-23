@@ -185,14 +185,23 @@ def run_backtest(
     tf: str,
     months: int = 12,
     config: EngineConfig | None = None,
+    *,
+    start_bar: int | None = None,
+    end_bar: int | None = None,
+    df: pd.DataFrame | None = None,
+    funding_history: list[dict] | None = None,
+    oi_full: pd.DataFrame | None = None,
 ) -> BacktestResult:
     cfg = config or load_config()
     data = DataLayer(cfg)
     bars_per_month = 30 * 24 if tf == "1h" else 30 * 24 * 4
     bars = months * bars_per_month
-    df = data.get_ohlcv_history(symbol, tf, bars=bars, validate=False)
-    funding_history = data.get_funding_history(symbol, limit=500)
-    oi_full = data.get_oi_history(symbol, tf, limit=500)
+    if df is None:
+        df = data.get_ohlcv_history(symbol, tf, bars=bars, validate=False)
+    if funding_history is None:
+        funding_history = data.get_funding_history(symbol, limit=500)
+    if oi_full is None:
+        oi_full = data.get_oi_history(symbol, tf, limit=500)
     flow_available = bool(funding_history) or len(oi_full) >= 24
 
     htf_tf = DataLayer.htf_timeframe(tf, cfg.technical.htf_multiplier)
@@ -202,8 +211,10 @@ def run_backtest(
     result = BacktestResult(symbol=symbol, timeframe=tf, structure_degraded=True, flow_degraded=not flow_available)
     warmup = 220
     timeout = cfg.risk.trade_timeout_bars
+    i_start = start_bar if start_bar is not None else warmup
+    i_end = end_bar if end_bar is not None else len(df) - timeout - 1
 
-    for i in range(warmup, len(df) - timeout - 1):
+    for i in range(i_start, i_end):
         window = df.iloc[: i + 1].copy()
         htf_window = resample_ohlcv(window, htf_f)
         df_4h = resample_ohlcv(window, tf4_f)
@@ -246,6 +257,86 @@ def run_backtest(
 
     result.bucket_stats = bucket_stats_from_trades(result.trades)
     return result
+
+
+def _bars_per_month(tf: str) -> int:
+    if tf == "1h":
+        return 30 * 24
+    if tf == "15m":
+        return 30 * 24 * 4
+    if tf == "4h":
+        return 30 * 6
+    return 30 * 24
+
+
+def run_walk_forward(
+    symbol: str,
+    tf: str,
+    months: int = 18,
+    config: EngineConfig | None = None,
+) -> dict:
+    """Walk-forward validation: OOS trades only feed calibration (§11)."""
+    cfg = config or load_config()
+    bpm = _bars_per_month(tf)
+    total_bars = months * bpm
+    train_bars = cfg.backtest.walk_forward_train_months * bpm
+    val_bars = cfg.backtest.walk_forward_val_months * bpm
+    roll_bars = cfg.backtest.walk_forward_roll_months * bpm
+
+    data = DataLayer(cfg)
+    df = data.get_ohlcv_history(symbol, tf, bars=total_bars, validate=False)
+    funding_history = data.get_funding_history(symbol, limit=500)
+    oi_full = data.get_oi_history(symbol, tf, limit=500)
+
+    oos_trades: list[TradeRecord] = []
+    is_trades: list[TradeRecord] = []
+    folds = 0
+    start = 0
+
+    while start + train_bars + val_bars <= len(df) and folds < cfg.backtest.walk_forward_min_folds + 10:
+        val_start = start + train_bars
+        val_end = val_start + val_bars
+        is_result = run_backtest(
+            symbol, tf, months=1, config=cfg,
+            start_bar=start, end_bar=val_start,
+            df=df, funding_history=funding_history, oi_full=oi_full,
+        )
+        oos_result = run_backtest(
+            symbol, tf, months=1, config=cfg,
+            start_bar=val_start, end_bar=val_end,
+            df=df, funding_history=funding_history, oi_full=oi_full,
+        )
+        is_trades.extend(is_result.trades)
+        oos_trades.extend(oos_result.trades)
+        folds += 1
+        start += roll_bars
+        if folds >= cfg.backtest.walk_forward_min_folds and start + train_bars + val_bars > len(df):
+            break
+
+    is_stats = bucket_stats_from_trades(is_trades)
+    oos_stats = bucket_stats_from_trades(oos_trades)
+
+    is_pf = _aggregate_pf(is_trades)
+    oos_pf = _aggregate_pf(oos_trades)
+    accepted = oos_pf >= cfg.backtest.oos_pf_ratio_min * is_pf if is_pf > 0 else bool(oos_trades)
+
+    return {
+        "folds": folds,
+        "in_sample_trades": len(is_trades),
+        "out_of_sample_trades": len(oos_trades),
+        "in_sample_stats": is_stats,
+        "out_of_sample_stats": oos_stats,
+        "in_sample_profit_factor": is_pf,
+        "out_of_sample_profit_factor": oos_pf,
+        "accepted": accepted,
+        "oos_trades": oos_trades,
+    }
+
+
+def _aggregate_pf(trades: list[TradeRecord]) -> float:
+    gross_profit = sum(t.pnl_r for t in trades if t.pnl_r > 0)
+    gross_loss = abs(sum(t.pnl_r for t in trades if t.pnl_r < 0))
+    return gross_profit / gross_loss if gross_loss else float("inf")
 
 
 def save_calibration_data(results: list[BacktestResult], path: Path) -> dict:

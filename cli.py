@@ -45,6 +45,21 @@ def _render_verdict(verdict, json_only: bool = False) -> None:
     if verdict.reasons:
         console.print("Reason: " + "; ".join(verdict.reasons))
 
+    if verdict.explanation:
+        exp = verdict.explanation
+        if exp.why:
+            console.print("\n[green]Why:[/green]")
+            for line in exp.why[:6]:
+                console.print(f"  ✓ {line}")
+        if exp.why_not:
+            console.print("\n[yellow]Why not stronger:[/yellow]")
+            for line in exp.why_not[:6]:
+                console.print(f"  ✗ {line}")
+        if exp.risk:
+            console.print("\n[bold]Risk:[/bold]")
+            for line in exp.risk:
+                console.print(f"  {line}")
+
     if verdict.trade_plan:
         tp = verdict.trade_plan
         console.print(
@@ -105,23 +120,18 @@ def scan(
     top: int = typer.Option(20, "--top"),
     tf: str = typer.Option("1h", "--tf"),
     json_output: bool = typer.Option(False, "--json"),
+    workers: int = typer.Option(5, "--workers", help="Parallel scan workers"),
 ) -> None:
-    """Scan top-volume pairs for non-NO-TRADE verdicts."""
+    """Scan top-volume pairs for non-NO-TRADE verdicts (parallel)."""
     from engine.data import DataLayer
+    from engine.scan import scan_pairs
 
     config = load_config()
     data = DataLayer(config)
     pairs = data.get_top_volume_pairs(top)
-    console.print(f"[bold]Downpour Trade AI[/bold] — scanning top {top} pairs @ {tf}\n")
+    console.print(f"[bold]Downpour Trade AI[/bold] — scanning top {top} pairs @ {tf} ({workers} workers)\n")
 
-    hits = []
-    for sym in pairs:
-        try:
-            verdict = analyze_symbol(sym, tf, config=config)
-            if verdict.action != "NO_TRADE":
-                hits.append(verdict)
-        except Exception as exc:  # noqa: BLE001
-            console.print(f"[dim]{sym}: skipped ({exc})[/dim]")
+    hits = scan_pairs(pairs, tf, config=config, max_workers=workers, light=True, actionable_only=True)
 
     if json_output:
         console.print_json(json.dumps([v.to_dict() for v in hits], indent=2))

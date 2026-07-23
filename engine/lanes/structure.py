@@ -87,6 +87,40 @@ def detect_walls(book: dict, price: float, symbol: str, cfg) -> list[Wall]:
     return walls
 
 
+def _volume_profile(df: pd.DataFrame, bins: int) -> tuple[float, list[float], list[float], list[float]]:
+    """POC, HVN prices, LVN prices from OHLCV volume distribution."""
+    lo = float(df["low"].min())
+    hi = float(df["high"].max())
+    if hi <= lo:
+        return float(df["close"].iloc[-1]), [], [], []
+
+    edges = np.linspace(lo, hi, bins + 1)
+    vol_bins = np.zeros(bins)
+    for _, row in df.iterrows():
+        bar_lo, bar_hi = float(row["low"]), float(row["high"])
+        vol = float(row["volume"])
+        if bar_hi <= bar_lo or vol <= 0:
+            continue
+        span = bar_hi - bar_lo
+        for i in range(bins):
+            b_lo, b_hi = edges[i], edges[i + 1]
+            overlap = max(0.0, min(bar_hi, b_hi) - max(bar_lo, b_lo))
+            if overlap > 0:
+                vol_bins[i] += vol * (overlap / span)
+
+    if vol_bins.sum() <= 0:
+        return float(df["close"].iloc[-1]), [], [], []
+
+    centers = (edges[:-1] + edges[1:]) / 2
+    poc_idx = int(np.argmax(vol_bins))
+    poc = float(centers[poc_idx])
+    hvn_thresh = float(np.percentile(vol_bins, 70))
+    lvn_thresh = float(np.percentile(vol_bins, 20))
+    hvn_prices = [float(centers[i]) for i in range(bins) if vol_bins[i] >= hvn_thresh]
+    lvn_prices = [float(centers[i]) for i in range(bins) if vol_bins[i] <= lvn_thresh and vol_bins[i] > 0]
+    return poc, hvn_prices, lvn_prices, list(centers)
+
+
 def analyze_structure(
     df: pd.DataFrame,
     book: dict | None,
@@ -206,6 +240,23 @@ def analyze_structure(
 
     wall_contribution = max(-cfg.wall_max_contribution, min(cfg.wall_max_contribution, wall_contribution))
     score += wall_contribution
+
+    poc, hvn_prices, lvn_prices, _ = _volume_profile(df, cfg.vp_bins)
+    values["poc"] = poc
+    in_lvn = any(abs(price - lv) / atr < 0.3 for lv in lvn_prices[:20]) if lvn_prices else False
+    if in_lvn:
+        evidence.append(f"price in LVN zone (unstable, 0)")
+    elif price > poc:
+        hvn_below = [h for h in hvn_prices if h < price and (price - h) / atr <= 1.0]
+        if hvn_below:
+            score += cfg.vp_poc_above_score
+            evidence.append(f"price above POC={poc:.2f}, HVN below at {hvn_below[-1]:.2f} (+{cfg.vp_poc_above_score:.0f})")
+    elif price < poc:
+        hvn_above = [h for h in hvn_prices if h > price and (h - price) / atr <= 1.0]
+        if hvn_above:
+            score += cfg.vp_poc_below_score
+            evidence.append(f"price below POC={poc:.2f}, HVN above at {hvn_above[0]:.2f} ({cfg.vp_poc_below_score:.0f})")
+
     score = max(-100.0, min(100.0, score))
 
     if not evidence:

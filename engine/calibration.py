@@ -10,7 +10,7 @@ from engine.models import Verdict
 
 
 def _score_bucket(score: float, action: str) -> str:
-    s = score if action == "LONG" else abs(score)
+    s = abs(score)
     if s >= 50:
         return "50+"
     if s >= 35:
@@ -22,7 +22,9 @@ def load_calibration_tables(path: Path | None = None) -> dict:
     cal_path = path or Path("data/calibration.json")
     if not cal_path.exists():
         return {}
-    return json.loads(cal_path.read_text())
+    data = json.loads(cal_path.read_text())
+    # Strip walk_forward metadata when looking up buckets
+    return {k: v for k, v in data.items() if k != "walk_forward" and isinstance(v, dict)}
 
 
 def calibrate_label(verdict: Verdict, tables: dict | None = None, config: EngineConfig | None = None) -> str:
@@ -59,8 +61,21 @@ def apply_confidence(verdict: Verdict, config: EngineConfig | None = None) -> Ve
 
 
 def rebuild_calibration(symbols: list[str], tf: str, months: int, config: EngineConfig | None = None) -> dict:
-    from engine.backtest import run_backtest, save_calibration_data
+    from engine.backtest import BacktestResult, bucket_stats_from_trades, run_walk_forward, save_calibration_data
 
     cfg = config or load_config()
-    results = [run_backtest(sym, tf, months, cfg) for sym in symbols]
-    return save_calibration_data(results, Path(cfg.data.cache_dir) / "calibration.json")
+    all_oos_trades = []
+    wf_reports = []
+
+    for sym in symbols:
+        wf = run_walk_forward(sym, tf, months, cfg)
+        wf_reports.append({"symbol": sym, **{k: v for k, v in wf.items() if k != "oos_trades"}})
+        all_oos_trades.extend(wf.get("oos_trades", []))
+
+    pseudo = BacktestResult(symbol=",".join(symbols), timeframe=tf, trades=all_oos_trades)
+    stats = bucket_stats_from_trades(pseudo.trades)
+    out_path = Path(cfg.data.cache_dir) / "calibration.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {**stats, "walk_forward": wf_reports}
+    out_path.write_text(json.dumps(payload, indent=2))
+    return payload

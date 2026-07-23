@@ -23,6 +23,14 @@ class RegimeResult:
 
 
 @dataclass
+class Explanation:
+    decision: str
+    why: list[str]
+    why_not: list[str]
+    risk: list[str]
+
+
+@dataclass
 class TradePlan:
     entry: float
     stop_loss: float
@@ -43,6 +51,7 @@ class Verdict:
     confidence: str
     trade_plan: TradePlan | None
     reasons: list[str]
+    explanation: Explanation | None = None
     symbol: str = ""
     timeframe: str = ""
     timestamp: str = ""
@@ -73,6 +82,12 @@ class Verdict:
                 for lane in self.lanes
             ],
             "reasons": self.reasons,
+            "explanation": None if self.explanation is None else {
+                "decision": self.explanation.decision,
+                "why": self.explanation.why,
+                "why_not": self.explanation.why_not,
+                "risk": self.explanation.risk,
+            },
             "trade_plan": None
             if self.trade_plan is None
             else {

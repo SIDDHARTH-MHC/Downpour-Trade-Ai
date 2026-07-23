@@ -54,6 +54,10 @@ class FlowConfig(BaseModel):
     taker_bull_ratio: float = 0.58
     taker_bear_ratio: float = 0.42
     raw_scale: float = 1.5
+    funding_zscore_bull: float = 15
+    funding_zscore_bear: float = -15
+    funding_zscore_threshold: float = 2.0
+    funding_zscore_min_samples: int = 10
 
 
 class StructureConfig(BaseModel):
@@ -77,6 +81,12 @@ class StructureConfig(BaseModel):
     bid_ask_ratio_low: float = 0.5
     wall_max_contribution: float = 30
     min_touch_breakout: int = 3
+    vp_bins: int = 100
+    vp_hvn_percentile: float = 70
+    vp_lvn_percentile: float = 20
+    vp_poc_above_score: float = 10
+    vp_poc_below_score: float = -10
+    vp_clean_air_score: float = 5
 
 
 class RegimeConfig(BaseModel):
@@ -111,6 +121,11 @@ class BacktestConfig(BaseModel):
     fee_pct: float = 0.001
     slippage_pct: float = 0.0005
     default_months: int = 12
+    walk_forward_train_months: int = 6
+    walk_forward_val_months: int = 2
+    walk_forward_roll_months: int = 2
+    walk_forward_min_folds: int = 4
+    oos_pf_ratio_min: float = 0.7
 
 
 class CalibrationConfig(BaseModel):
