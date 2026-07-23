@@ -36,6 +36,10 @@ export type Verdict = {
 export type ScanResponse = {
   timeframe: string;
   data_as_of_utc: string;
+  status?: string;
+  message?: string;
+  last_scan_utc?: string;
+  scan_running?: boolean;
   total: number;
   actionable_count: number;
   results: Verdict[];

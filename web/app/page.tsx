@@ -24,7 +24,15 @@ export default function DashboardPage() {
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
-      {data && (
+      {data && data.total === 0 && !data.scan_running && (
+        <p className="text-sm text-amber-400">
+          No scan data yet. First scan runs automatically after deploy — refresh in 1-2 minutes.
+        </p>
+      )}
+      {data && data.scan_running && (
+        <p className="text-sm text-amber-400">Scan in progress…</p>
+      )}
+      {data && data.total > 0 && (
         <>
           <p className="text-sm text-muted">
             {data.total} pairs · {data.actionable_count} actionable signals

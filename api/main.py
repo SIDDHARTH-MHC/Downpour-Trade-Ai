@@ -17,7 +17,6 @@ if str(ROOT) not in sys.path:
 
 from api.limiter import limiter
 from api.db import Database
-from api.limiter import limiter
 from api.middleware import RequestLogMiddleware
 from api.routes.analyze import router as analyze_router
 from api.routes.backtest_stats import router as backtest_router

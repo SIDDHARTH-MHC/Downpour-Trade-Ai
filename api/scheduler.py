@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,6 +19,16 @@ from engine.data import DataLayer
 
 logger = logging.getLogger("downpour.scheduler")
 _scheduler: BackgroundScheduler | None = None
+_scan_lock = threading.Lock()
+_scan_running = False
+
+
+def scan_status() -> dict:
+    db = Database()
+    return {
+        "running": _scan_running,
+        "last_scan_utc": db.get_meta("last_scan_utc", "never"),
+    }
 
 
 def _resolve_open_outcomes(db: Database) -> None:
@@ -59,31 +70,53 @@ def _resolve_open_outcomes(db: Database) -> None:
             db.resolve_outcome(item["outcome_id"], outcome)
 
 
-def run_scan(tf: str = "1h") -> list[dict]:
+def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
+    global _scan_running
     settings = get_settings()
-    db = Database()
-    config = load_config()
-    data = DataLayer(config)
-    pairs = data.get_top_volume_pairs(settings.top_pairs_count)
-    results: list[dict] = []
-    hits: list[dict] = []
+    pair_limit = limit or settings.scan_pair_limit
 
-    for symbol in pairs:
+    if not _scan_lock.acquire(blocking=False):
+        logger.info("scan already running, skipping")
+        return Database().latest_scan(tf)
+
+    _scan_running = True
+    try:
+        db = Database()
+        config = load_config()
+        data = DataLayer(config)
+        pairs = data.get_top_volume_pairs(min(pair_limit, settings.top_pairs_count))
+        results: list[dict] = []
+        hits: list[dict] = []
+
+        logger.info("starting scan: %s pairs @ %s", len(pairs), tf)
+        for symbol in pairs:
+            try:
+                verdict = analyze_symbol(symbol, tf, config=config)
+                payload = verdict.to_dict()
+                payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                db.save_verdict(payload)
+                results.append(payload)
+                if payload["action"] != "NO_TRADE":
+                    hits.append(payload)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("scan skip %s: %s", symbol, exc)
+
+        db.save_scan(tf, results)
+        db.set_meta("last_scan_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
         try:
-            verdict = analyze_symbol(symbol, tf, config=config)
-            payload = verdict.to_dict()
-            payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-            db.save_verdict(payload)
-            results.append(payload)
-            if payload["action"] != "NO_TRADE":
-                hits.append(payload)
+            asyncio.run(alert_scan_hits(hits))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("scan skip %s: %s", symbol, exc)
+            logger.warning("telegram alert failed: %s", exc)
+        logger.info("scan complete: %s results", len(results))
+        return results
+    finally:
+        _scan_running = False
+        _scan_lock.release()
 
-    db.save_scan(tf, results)
-    db.set_meta("last_scan_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
-    asyncio.run(alert_scan_hits(hits))
-    return results
+
+def run_scan_async(tf: str = "1h", limit: int | None = None) -> None:
+    thread = threading.Thread(target=run_scan, kwargs={"tf": tf, "limit": limit}, daemon=True)
+    thread.start()
 
 
 def refresh_pairs() -> None:
@@ -117,12 +150,21 @@ def start_scheduler() -> BackgroundScheduler:
 
     settings = get_settings()
     _scheduler = BackgroundScheduler(timezone="UTC")
-    _scheduler.add_job(run_scan, "interval", minutes=settings.scan_interval_min, id="scan", kwargs={"tf": "1h"})
+    _scheduler.add_job(
+        run_scan,
+        "interval",
+        minutes=settings.scan_interval_min,
+        id="scan",
+        kwargs={"tf": "1h", "limit": settings.scan_pair_limit},
+    )
     _scheduler.add_job(refresh_pairs, "interval", hours=24, id="pairs")
     _scheduler.add_job(refresh_calibration, "interval", weeks=1, id="calibration")
     _scheduler.add_job(_resolve_open_outcomes, "interval", minutes=30, id="outcomes", args=[Database()])
     _scheduler.start()
     logger.info("scheduler started")
+
+    # Kick off an initial scan in background so /scan is populated after deploy.
+    run_scan_async(tf="1h", limit=settings.scan_pair_limit)
     return _scheduler
 
 
