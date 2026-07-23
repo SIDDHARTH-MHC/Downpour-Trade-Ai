@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "Downpour Trade AI API"
-    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    allowed_origins: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "https://downpour-trade-ai-virid.vercel.app"
+    )
     database_url: str = "sqlite:///./data/downpour.db"
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
