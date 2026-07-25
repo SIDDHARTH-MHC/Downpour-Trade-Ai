@@ -131,7 +131,7 @@ def scan(
     pairs = data.get_top_volume_pairs(top)
     console.print(f"[bold]Downpour Trade AI[/bold] — scanning top {top} pairs @ {tf} ({workers} workers)\n")
 
-    hits = scan_pairs(pairs, tf, config=config, max_workers=workers, light=True, actionable_only=True)
+    hits = scan_pairs(pairs, tf, config=config, max_workers=workers, light=False, actionable_only=True)
 
     if json_output:
         console.print_json(json.dumps([v.to_dict() for v in hits], indent=2))

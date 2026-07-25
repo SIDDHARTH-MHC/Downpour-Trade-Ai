@@ -26,7 +26,7 @@ export default function DashboardPage() {
       {error && <ErrorState message={(error as Error).message} />}
       {data && data.scan_running && (
         <p className="text-sm text-amber-400">
-          Scan in progress… {data.scan_progress ? `(${data.scan_progress})` : ""} Each pair takes ~20–40s on free tier.
+          Scan in progress… {data.scan_progress ? `(${data.scan_progress})` : ""} Full-depth scan running in parallel.
         </p>
       )}
       {data && data.total === 0 && !data.scan_running && (

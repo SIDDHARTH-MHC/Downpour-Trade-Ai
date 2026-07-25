@@ -18,11 +18,13 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     scan_interval_min: int = 15
-    top_pairs_count: int = 20
-    scan_pair_limit: int = 5
+    top_pairs_count: int = 50
+    scan_pair_limit: int = 20
+    scan_light_mode: bool = False
+    scan_workers: int = 5
     verdict_cache_ttl_sec: int = 60
     orderbook_cache_ttl_sec: int = 10
-    rate_limit_per_minute: int = 30
+    rate_limit_per_minute: int = 60
 
 
 @lru_cache

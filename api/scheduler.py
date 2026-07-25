@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -71,6 +72,17 @@ def _resolve_open_outcomes(db: Database) -> None:
             db.resolve_outcome(item["outcome_id"], outcome)
 
 
+def _scan_symbol(symbol: str, tf: str, *, light: bool, config) -> tuple[str, dict | None]:
+    try:
+        verdict = analyze_symbol(symbol, tf, light=light, config=config)
+        payload = verdict.to_dict()
+        payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        return symbol, payload
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scan skip %s: %s", symbol, exc)
+        return symbol, None
+
+
 def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
     global _scan_running
     settings = get_settings()
@@ -88,21 +100,40 @@ def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
         pairs = data.get_top_volume_pairs(min(pair_limit, settings.top_pairs_count))
         results: list[dict] = []
         hits: list[dict] = []
+        light = settings.scan_light_mode
+        workers = max(1, settings.scan_workers)
 
-        logger.info("starting scan: %s pairs @ %s", len(pairs), tf)
-        for i, symbol in enumerate(pairs, start=1):
-            try:
-                db.set_meta("scan_progress", f"{i}/{len(pairs)}:{symbol}")
-                verdict = analyze_symbol(symbol, tf, light=True, config=config)
-                payload = verdict.to_dict()
-                payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        logger.info(
+            "starting scan: %s pairs @ %s (light=%s, workers=%s)",
+            len(pairs),
+            tf,
+            light,
+            workers,
+        )
+
+        # Warm BTC cache once for alt regime checks
+        try:
+            data.get_ohlcv("BTC/USDT", "1h", bars=10, validate=False)
+        except Exception:
+            pass
+
+        completed = 0
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {
+                pool.submit(_scan_symbol, symbol, tf, light=light, config=config): symbol
+                for symbol in pairs
+            }
+            for fut in as_completed(futures):
+                symbol, payload = fut.result()
+                completed += 1
+                db.set_meta("scan_progress", f"{completed}/{len(pairs)}:{symbol}")
+                if payload is None:
+                    continue
                 db.save_verdict(payload)
                 results.append(payload)
                 db.save_scan(tf, results)
                 if payload["action"] != "NO_TRADE":
                     hits.append(payload)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("scan skip %s: %s", symbol, exc)
 
         db.save_scan(tf, results)
         db.set_meta("last_scan_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
@@ -134,7 +165,7 @@ def refresh_pairs() -> None:
         if sym.endswith("/USDT") and info.get("quoteVolume")
     ]
     pairs.sort(key=lambda x: x[1], reverse=True)
-    db.save_pairs(pairs[:50])
+    db.save_pairs(pairs[: settings.top_pairs_count])
     db.set_meta("pairs_refreshed_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
 
 
@@ -197,7 +228,7 @@ def _run_calibration_safe(symbols: list[str], tf: str, months: int) -> None:
 
 def refresh_calibration() -> None:
     db = Database()
-    stats = rebuild_calibration(["BTC/USDT", "ETH/USDT"], "1h", 12)
+    stats = rebuild_calibration(["BTC/USDT", "ETH/USDT", "SOL/USDT"], "1h", 12)
     db.save_calibration(stats)
     cal_path = Path("data/calibration.json")
     if cal_path.exists():
@@ -224,7 +255,6 @@ def start_scheduler() -> BackgroundScheduler:
     _scheduler.start()
     logger.info("scheduler started")
 
-    # Kick off an initial scan in background so /scan is populated after deploy.
     run_scan_async(tf="1h", limit=settings.scan_pair_limit)
     return _scheduler
 
