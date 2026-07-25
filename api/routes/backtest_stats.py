@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Query, Request
 
+from api.calibration_utils import filter_calibration_buckets
 from api.db import Database
 
 router = APIRouter()
@@ -23,11 +24,12 @@ def backtest_stats(
         cal_path = Path("data/calibration.json")
         if cal_path.exists():
             stats = json.loads(cal_path.read_text())
+    buckets = filter_calibration_buckets(stats or {})
     return {
         "app": "Downpour Trade AI",
         "symbol": symbol,
         "timeframe": tf,
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "request_id": getattr(request.state, "request_id", None),
-        "buckets": stats,
+        "buckets": buckets,
     }

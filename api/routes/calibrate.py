@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, Request
 
+from api.calibration_utils import filter_calibration_buckets
 from api.db import Database
 from api.scheduler import calibration_status, run_calibration_async, run_calibration_sync
 
@@ -18,13 +19,15 @@ def calibrate_status(request: Request) -> dict:
     status = calibration_status()
     db = Database()
     stats = db.load_calibration()
+    buckets = filter_calibration_buckets(stats)
     return {
         "app": "Downpour Trade AI",
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "request_id": getattr(request.state, "request_id", None),
         **status,
-        "bucket_count": len(stats),
-        "buckets": stats,
+        "bucket_count": len(buckets),
+        "buckets": buckets,
+        "walk_forward": stats.get("walk_forward") if isinstance(stats.get("walk_forward"), list) else None,
     }
 
 
@@ -51,14 +54,15 @@ def start_calibration(
 
     if sync:
         stats = run_calibration_sync(sym_list, tf, months)
+        buckets = filter_calibration_buckets(stats)
         return {
             "app": "Downpour Trade AI",
             "status": "calibration_complete",
             "message": f"Calibration complete for {', '.join(sym_list)}.",
             "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
             "request_id": getattr(request.state, "request_id", None),
-            "bucket_count": len(stats),
-            "buckets": stats,
+            "bucket_count": len(buckets),
+            "buckets": buckets,
         }
 
     run_calibration_async(sym_list, tf, months)

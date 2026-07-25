@@ -23,7 +23,9 @@ export default function BacktestsPage() {
     }
   }
 
-  const buckets = data?.buckets || {};
+  const buckets = Object.fromEntries(
+    Object.entries(data?.buckets || {}).filter(([, stats]) => typeof stats?.win_rate === "number")
+  );
 
   return (
     <div className="space-y-4">
@@ -74,7 +76,7 @@ export default function BacktestsPage() {
                   <td className="py-2">{stats.trade_count}</td>
                   <td className="py-2">{(stats.win_rate * 100).toFixed(1)}%</td>
                   <td className="py-2">{stats.avg_r.toFixed(2)}</td>
-                  <td className="py-2">{stats.profit_factor.toFixed(2)}</td>
+                  <td className="py-2">{Number(stats.profit_factor).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-from api.settings import get_settings
+from api.calibration_utils import filter_calibration_buckets, is_bucket_stats
 
 
 def _utcnow() -> str:
@@ -150,17 +150,35 @@ class Database:
         return [dict(row) for row in rows]
 
     def save_calibration(self, stats: dict) -> None:
+        buckets = filter_calibration_buckets(stats)
+        walk_forward = stats.get("walk_forward")
         with self.connect() as conn:
-            for bucket, data in stats.items():
+            for bucket, data in buckets.items():
                 conn.execute(
                     "INSERT OR REPLACE INTO calibration (bucket, stats_json, updated_at) VALUES (?, ?, ?)",
                     (bucket, json.dumps(data), _utcnow()),
+                )
+            conn.execute("DELETE FROM calibration WHERE bucket = ?", ("walk_forward",))
+            if isinstance(walk_forward, list):
+                conn.execute(
+                    "INSERT OR REPLACE INTO calibration (bucket, stats_json, updated_at) VALUES (?, ?, ?)",
+                    ("_walk_forward", json.dumps(walk_forward), _utcnow()),
                 )
 
     def load_calibration(self) -> dict:
         with self.connect() as conn:
             rows = conn.execute("SELECT bucket, stats_json FROM calibration").fetchall()
-        return {row["bucket"]: json.loads(row["stats_json"]) for row in rows}
+        result: dict = {}
+        for row in rows:
+            if row["bucket"] == "_walk_forward":
+                result["walk_forward"] = json.loads(row["stats_json"])
+                continue
+            if row["bucket"] == "walk_forward":
+                continue
+            value = json.loads(row["stats_json"])
+            if is_bucket_stats(value):
+                result[row["bucket"]] = value
+        return result
 
     def set_meta(self, key: str, value: str) -> None:
         with self.connect() as conn:
