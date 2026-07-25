@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from api.calibration_utils import filter_calibration_buckets, is_bucket_stats
+from api.settings import get_settings
 
 
 def _utcnow() -> str:
