@@ -1,8 +1,9 @@
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { AppNav } from "@/components/AppNav";
-import { DisclaimerFooter } from "@/components/DisclaimerFooter";
+import { AppShell } from "@/components/shell/AppShell";
+import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
   title: "Downpour Trade AI",
@@ -11,20 +12,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <header className="border-b border-border bg-panel/80 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-3 px-4 py-3">
-            <Link href="/" className="shrink-0 text-lg font-bold text-sky-400">
-              Downpour Trade AI
-            </Link>
-            <AppNav />
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-        <div className="mx-auto max-w-6xl px-4 pb-8">
-          <DisclaimerFooter />
-        </div>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
+      <body className="min-h-screen font-sans">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
+        <AppProviders>
+          <AppShell>
+            <div id="main-content">{children}</div>
+          </AppShell>
+        </AppProviders>
       </body>
     </html>
   );

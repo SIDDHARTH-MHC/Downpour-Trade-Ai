@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function BacktestsPage() {
   const [starting, setStarting] = useState(false);
@@ -17,7 +21,7 @@ export default function BacktestsPage() {
       await api.startCalibrate(6, "BTC/USDT,ETH/USDT", "1h");
       await mutate();
     } catch (err) {
-      alert((err as Error).message);
+      toast.error((err as Error).message);
     } finally {
       setStarting(false);
     }
@@ -37,19 +41,15 @@ export default function BacktestsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Calibration / backtest stats</h1>
-          <p className="text-sm text-muted">Confidence labels are backed by measured historical win rates</p>
-        </div>
-        <button
-          onClick={handleRunCalibrate}
-          disabled={starting || data?.running}
-          className="rounded bg-sky-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          {data?.running ? "Calibrating…" : starting ? "Starting…" : "Run calibration"}
-        </button>
-      </div>
+      <ModuleHeader
+        title="Calibration / backtest stats"
+        description="Confidence labels are backed by measured historical win rates"
+        actions={
+          <Button onClick={handleRunCalibrate} disabled={starting || data?.running}>
+            {data?.running ? "Calibrating…" : starting ? "Starting…" : "Run calibration"}
+          </Button>
+        }
+      />
       <DataStamp label={data?.data_as_of_utc} />
 
       {data?.running && (
@@ -64,7 +64,8 @@ export default function BacktestsPage() {
       )}
 
       {data && !data.running && Object.keys(buckets).length > 0 && (
-        <dl className="card grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <Card>
+          <CardContent className="grid grid-cols-2 gap-4 p-4 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-muted">Pairs calibrated</dt>
             <dd className="text-lg font-semibold">{wf.length || "—"}</dd>
@@ -81,13 +82,15 @@ export default function BacktestsPage() {
             <dt className="text-muted">Walk-forward</dt>
             <dd className="text-lg font-semibold">{wf.length ? (wfPassed ? "Passed" : "Failed") : "—"}</dd>
           </div>
-        </dl>
+          </CardContent>
+        </Card>
       )}
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
       {data && (
-        <div className="card overflow-x-auto">
+        <Card className="overflow-x-auto">
+          <CardContent className="p-4">
           <table className="min-w-full text-sm">
             <thead className="text-left text-muted">
               <tr>
@@ -116,7 +119,8 @@ export default function BacktestsPage() {
               months.
             </p>
           )}
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

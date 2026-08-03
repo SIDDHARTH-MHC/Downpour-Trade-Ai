@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 function TermTable({ rows }: { rows: [string, string][] }) {
   return (
@@ -20,22 +23,22 @@ function TermTable({ rows }: { rows: [string, string][] }) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="card space-y-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {children}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">{children}</CardContent>
+    </Card>
   );
 }
 
 export default function GlossaryPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Glossary</h1>
-        <p className="mt-1 text-sm text-muted">
-          What every label on Downpour Trade AI means — deterministic math on live Binance data, no LLM.
-        </p>
-      </div>
+      <ModuleHeader
+        title="Glossary"
+        description="What every label on Downpour Trade AI means — deterministic math on live Binance data, no LLM."
+      />
 
       <Section title="Core idea">
         <p className="text-sm text-muted">
@@ -225,20 +228,22 @@ export default function GlossaryPage() {
         </ul>
       </Section>
 
-      <div className="card border-amber-900/40 bg-amber-950/20 text-sm text-muted">
-        <p className="font-medium text-amber-200">Disclaimer</p>
-        <p className="mt-1">
-          Downpour Trade AI is for informational and educational purposes only. It is not financial advice
-          and is not registered with SEBI or any regulatory body. Past backtest win rates do not guarantee
-          future results. Risk only what you can afford to lose.
-        </p>
-        <p className="mt-3">
-          Ready to explore?{" "}
-          <Link href="/" className="text-sky-400 hover:underline">
-            Open Dashboard
-          </Link>
-        </p>
-      </div>
+      <Alert className="border-amber-900/40 bg-amber-950/20">
+        <AlertTitle className="text-amber-200">Disclaimer</AlertTitle>
+        <AlertDescription className="text-muted">
+          <p>
+            Downpour Trade AI is for informational and educational purposes only. It is not financial advice
+            and is not registered with SEBI or any regulatory body. Past backtest win rates do not guarantee
+            future results. Risk only what you can afford to lose.
+          </p>
+          <p className="mt-3">
+            Ready to explore?{" "}
+            <Link href="/" className="text-primary hover:underline">
+              Open Dashboard
+            </Link>
+          </p>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

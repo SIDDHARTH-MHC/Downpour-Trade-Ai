@@ -3,6 +3,9 @@
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function StatusPage() {
   const { data, error, isLoading } = useSWR("engine-status", () => api.engineStatus(), {
@@ -11,26 +14,30 @@ export default function StatusPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Engine health</h1>
-        <p className="text-sm text-muted">Live dependency checks for data feeds and calibration</p>
-      </div>
+      <ModuleHeader
+        title="Engine health"
+        description="Live dependency checks for data feeds and calibration"
+      />
       <DataStamp label={data?.data_as_of_utc} />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
       {data && (
         <>
           <p className="text-sm">
-            Overall:{" "}
-            <span className={data.status === "ok" ? "text-long" : "text-amber-400"}>{data.status}</span>
+            Overall{" "}
+            <Badge variant={data.status === "ok" ? "success" : "warning"} className="ml-1">
+              {data.status}
+            </Badge>
           </p>
-          <div className="card grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {Object.entries(data.checks).map(([name, check]) => (
-              <div key={name} className="rounded border border-border/60 p-3 text-sm">
-                <div className="font-medium capitalize">{name.replace(/_/g, " ")}</div>
-                <div className={check.status === "ok" ? "text-long" : "text-amber-400"}>{check.status}</div>
-                <div className="text-xs text-muted">{check.detail}</div>
-              </div>
+              <Card key={name}>
+                <CardContent className="p-4 text-sm">
+                  <div className="font-medium capitalize">{name.replace(/_/g, " ")}</div>
+                  <div className={check.status === "ok" ? "text-long" : "text-warning"}>{check.status}</div>
+                  <div className="text-xs text-muted">{check.detail}</div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </>
