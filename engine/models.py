@@ -57,10 +57,12 @@ class Verdict:
     symbol: str = ""
     timeframe: str = ""
     timestamp: str = ""
+    config_hash: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "app": "Downpour Trade AI",
+            "config_hash": self.config_hash or None,
             "symbol": self.symbol,
             "timeframe": self.timeframe,
             "timestamp": self.timestamp,

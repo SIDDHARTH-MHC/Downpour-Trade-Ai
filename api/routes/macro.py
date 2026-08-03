@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 
 from engine.config import load_config
 from engine.data import DataLayer
+from engine.macro_context import macro_risk_snapshot
 
 router = APIRouter()
 
@@ -33,4 +34,15 @@ def macro_snapshot(request: Request) -> dict:
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "request_id": getattr(request.state, "request_id", None),
         "macro": snap,
+    }
+
+
+@router.get("/macro/risk")
+def macro_risk(request: Request) -> dict:
+    risk = macro_risk_snapshot()
+    return {
+        "app": "Downpour Trade AI",
+        "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "request_id": getattr(request.state, "request_id", None),
+        "risk": risk,
     }

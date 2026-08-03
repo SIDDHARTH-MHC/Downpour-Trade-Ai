@@ -26,6 +26,10 @@ technical:
   adx_chop_threshold: 20
   adx_chop_multiplier: 0.6
   htf_multiplier: 4
+  ema200_side_only_when_stack_neutral: true
+  macd_requires_stack_agreement: true
+  adx_multiplier_scope: trend_subscore
+  session_vwap_evidence: true
 
 flow:
   funding_short_crowd: 15
@@ -49,6 +53,11 @@ flow:
   funding_zscore_bear: -15
   funding_zscore_threshold: 2.0
   funding_zscore_min_samples: 10
+  long_short_ratio_enabled: true
+  long_short_zscore_threshold: 2.0
+  long_short_zscore_bull: 10
+  long_short_zscore_bear: -10
+  long_short_zscore_min_samples: 10
 
 structure:
   swing_fractal: 5
@@ -77,12 +86,21 @@ structure:
   vp_poc_above_score: 10
   vp_poc_below_score: -10
   vp_clean_air_score: 5
+  liquidity_sweep_enabled: true
+  liquidity_sweep_lookback: 20
+  liquidity_sweep_score: 12
+  liquidity_sweep_require_volume: true
+  equal_high_low_enabled: true
+  equal_high_low_pct: 0.001
+  fvg_min_gap_atr: 0.25
 
 regime:
   shock_percentile: 90
   compression_percentile: 20
   lookback_days: 90
   btc_move_threshold: 0.02
+  macro_dxy_risk_off_enabled: true
+  macro_dxy_risk_off_pct: 0.008
   weights:
     TRENDING_UP:
       technical: 1.3

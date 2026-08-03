@@ -41,6 +41,7 @@ def analyze_regime(
     btc_df: pd.DataFrame | None = None,
     config: EngineConfig | None = None,
     tf: str = "1h",
+    macro: dict | None = None,
 ) -> RegimeResult:
     cfg = (config or load_config()).regime
     evidence: list[str] = []
@@ -72,7 +73,20 @@ def analyze_regime(
             tradeable = False
             evidence.append(f"BTC 1h move={btc_move*100:.2f}% > ±{cfg.btc_move_threshold*100:.0f}% → alt NO-TRADE")
 
-    weights = cfg.weights.get(regime, cfg.weights.get("RANGING", {"technical": 1.0, "flow": 1.0, "structure": 1.0}))
+    weights = dict(
+        cfg.weights.get(regime, cfg.weights.get("RANGING", {"technical": 1.0, "flow": 1.0, "structure": 1.0}))
+    )
+
+    if cfg.macro_dxy_risk_off_enabled and macro:
+        dxy_pct = macro.get("dxy_24h_pct")
+        if dxy_pct is not None:
+            values["dxy_24h_pct"] = float(dxy_pct)
+            if dxy_pct >= cfg.macro_dxy_risk_off_pct:
+                evidence.append(
+                    f"DXY daily +{dxy_pct*100:.2f}% ≥ {cfg.macro_dxy_risk_off_pct*100:.1f}% → macro risk-off context"
+                )
+                weights["technical"] = weights.get("technical", 1.0) * 0.85
+
     if regime == "SHOCK":
         weights = {}
 

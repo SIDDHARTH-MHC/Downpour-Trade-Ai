@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from api.context_fetch import fetch_etf_context, fetch_news
+from api.context_fetch import fetch_etf_context, fetch_liquidations_context, fetch_news
 from api.db import Database
 from engine.correlation import correlation_matrix
 from engine.liquidity_snapshot import liquidity_snapshot
@@ -38,6 +38,17 @@ def context_etf(request: Request) -> dict:
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "request_id": getattr(request.state, "request_id", None),
         "etf": etf,
+    }
+
+
+@router.get("/context/liquidations")
+def context_liquidations(request: Request) -> dict:
+    liq = fetch_liquidations_context()
+    return {
+        "app": "Downpour Trade AI",
+        "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "request_id": getattr(request.state, "request_id", None),
+        "liquidations": liq,
     }
 
 

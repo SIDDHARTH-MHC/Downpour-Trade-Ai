@@ -5,9 +5,16 @@ from __future__ import annotations
 import pandas as pd
 
 from engine.lanes.structure import detect_swings
+from engine.structure_patterns import detect_fvg, detect_liquidity_sweep
 
 
-def detect_structure_events(df: pd.DataFrame, fractal: int = 5) -> list[dict]:
+def detect_structure_events(
+    df: pd.DataFrame,
+    fractal: int = 5,
+    *,
+    atr: float | None = None,
+    fvg_min_gap_atr: float = 0.25,
+) -> list[dict]:
     """
     Lightweight structure labels on the last closed bar.
     BOS = break of last swing high/low; CHoCH = break against prior micro-trend.
@@ -77,5 +84,28 @@ def detect_structure_events(df: pd.DataFrame, fractal: int = 5) -> list[dict]:
                 "label": f"Bullish CHoCH — break above {last_sh:.4g} after lower lows",
             }
         )
+
+    sweep = detect_liquidity_sweep(df, lookback=min(20, max(5, len(df) // 4)))
+    if sweep:
+        events.append(
+            {
+                "type": "SWEEP",
+                "direction": sweep["direction"],
+                "level": sweep["level"],
+                "label": sweep["label"],
+            }
+        )
+
+    if atr and atr > 0:
+        fvg = detect_fvg(df, min_gap_atr=fvg_min_gap_atr, atr=atr)
+        if fvg:
+            events.append(
+                {
+                    "type": "FVG",
+                    "direction": fvg["direction"],
+                    "level": fvg["level"],
+                    "label": fvg["label"],
+                }
+            )
 
     return events

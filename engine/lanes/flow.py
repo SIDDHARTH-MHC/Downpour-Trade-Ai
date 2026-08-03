@@ -74,11 +74,46 @@ def _funding_zscore(history: list[dict], current_rate: float | None, cfg) -> tup
     return 0.0, f"funding z={z:.2f} neutral (0)"
 
 
+def _long_short_zscore(history: list[dict], cfg) -> tuple[float, str]:
+    if not cfg.long_short_ratio_enabled or len(history) < cfg.long_short_zscore_min_samples:
+        return 0.0, "long/short ratio unavailable (0)"
+    ratios = []
+    for row in history:
+        raw = row.get("longShortRatio") or row.get("longAccount")  # binance uses longShortRatio
+        if raw is None:
+            continue
+        try:
+            ratios.append(float(raw))
+        except (TypeError, ValueError):
+            continue
+    if len(ratios) < cfg.long_short_zscore_min_samples:
+        return 0.0, "long/short ratio insufficient samples (0)"
+    mean = sum(ratios) / len(ratios)
+    var = sum((r - mean) ** 2 for r in ratios) / len(ratios)
+    std = var ** 0.5
+    current = ratios[-1]
+    if std <= 0:
+        return 0.0, f"long/short ratio={current:.3f} (0)"
+    z = (current - mean) / std
+    if z > cfg.long_short_zscore_threshold:
+        return (
+            cfg.long_short_zscore_bear,
+            f"long/short ratio z={z:.2f} crowd long ({cfg.long_short_zscore_bear:.0f})",
+        )
+    if z < -cfg.long_short_zscore_threshold:
+        return (
+            cfg.long_short_zscore_bull,
+            f"long/short ratio z={z:.2f} crowd short (+{cfg.long_short_zscore_bull:.0f})",
+        )
+    return 0.0, f"long/short ratio z={z:.2f} neutral (0)"
+
+
 def analyze_flow(
     df: pd.DataFrame,
     funding: dict,
     oi_df: pd.DataFrame,
     trades: list[dict] | None = None,
+    long_short_history: list[dict] | None = None,
     config: EngineConfig | None = None,
 ) -> LaneResult:
     cfg = (config or load_config()).flow
@@ -128,6 +163,10 @@ def analyze_flow(
     ts, te = _taker_score(trades or [], cfg)
     score += ts
     evidence.append(te)
+
+    ls_score, ls_ev = _long_short_zscore(long_short_history or [], cfg)
+    score += ls_score
+    evidence.append(ls_ev)
 
     raw = score
     score = max(-100.0, min(100.0, raw * cfg.raw_scale))

@@ -39,18 +39,10 @@ def detect_swings(df: pd.DataFrame, n: int = 5) -> tuple[list[float], list[float
     return highs, lows
 
 
-def cluster_levels(points: list[float], atr: float, factor: float) -> list[tuple[float, int]]:
-    if not points:
-        return []
-    points = sorted(points)
-    clusters: list[list[float]] = [[points[0]]]
-    threshold = atr * factor
-    for p in points[1:]:
-        if abs(p - clusters[-1][-1]) <= threshold:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
-    return [(float(np.mean(c)), len(c)) for c in clusters]
+def cluster_levels(points: list[float], atr: float, factor: float, equal_pct: float = 0.0) -> list[tuple[float, int]]:
+    from engine.structure_patterns import cluster_levels as _cluster
+
+    return _cluster(points, atr, factor, equal_pct=equal_pct)
 
 
 def nearest_levels(price: float, supports: list[SRLevel], resistances: list[SRLevel], max_levels: int) -> tuple[list[SRLevel], list[SRLevel]]:
@@ -137,8 +129,9 @@ def analyze_structure(
     no_edge = False
 
     swing_highs, swing_lows = detect_swings(df, cfg.swing_fractal)
-    sup_clusters = cluster_levels(swing_lows, atr, cfg.cluster_atr_factor)
-    res_clusters = cluster_levels(swing_highs, atr, cfg.cluster_atr_factor)
+    eq_pct = cfg.equal_high_low_pct if cfg.equal_high_low_enabled else 0.0
+    sup_clusters = cluster_levels(swing_lows, atr, cfg.cluster_atr_factor, equal_pct=eq_pct)
+    res_clusters = cluster_levels(swing_highs, atr, cfg.cluster_atr_factor, equal_pct=eq_pct)
 
     supports = [SRLevel(price=p, kind="support", touches=t) for p, t in sup_clusters]
     resistances = [SRLevel(price=p, kind="resistance", touches=t) for p, t in res_clusters]
@@ -268,5 +261,21 @@ def analyze_structure(
         values["nearest_support"] = nearest_support.price
     if nearest_resistance:
         values["nearest_resistance"] = nearest_resistance.price
+
+    if cfg.liquidity_sweep_enabled:
+        from engine.structure_patterns import detect_liquidity_sweep
+
+        sweep = detect_liquidity_sweep(
+            df, cfg.liquidity_sweep_lookback, require_volume=cfg.liquidity_sweep_require_volume
+        )
+        if sweep:
+            values["liquidity_sweep_level"] = float(sweep["level"])
+            if sweep["direction"] == "bullish":
+                score += cfg.liquidity_sweep_score
+                evidence.append(f"{sweep['label']} (+{cfg.liquidity_sweep_score:.0f})")
+            else:
+                score -= cfg.liquidity_sweep_score
+                evidence.append(f"{sweep['label']} (-{cfg.liquidity_sweep_score:.0f})")
+            score = max(-100.0, min(100.0, score))
 
     return LaneResult(name="structure", score=score, evidence=evidence, values=values, no_edge=no_edge)

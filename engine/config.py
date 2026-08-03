@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -34,6 +36,11 @@ class TechnicalConfig(BaseModel):
     adx_chop_threshold: float = 20
     adx_chop_multiplier: float = 0.6
     htf_multiplier: int = 4
+    # R0 orthogonalization (Research_Roadmap.md EXP-R0)
+    ema200_side_only_when_stack_neutral: bool = True
+    macd_requires_stack_agreement: bool = True
+    adx_multiplier_scope: Literal["full", "trend_subscore"] = "trend_subscore"
+    session_vwap_evidence: bool = True
 
 
 class FlowConfig(BaseModel):
@@ -58,6 +65,11 @@ class FlowConfig(BaseModel):
     funding_zscore_bear: float = -15
     funding_zscore_threshold: float = 2.0
     funding_zscore_min_samples: int = 10
+    long_short_ratio_enabled: bool = True
+    long_short_zscore_threshold: float = 2.0
+    long_short_zscore_bull: float = 10.0
+    long_short_zscore_bear: float = -10.0
+    long_short_zscore_min_samples: int = 10
 
 
 class StructureConfig(BaseModel):
@@ -87,6 +99,13 @@ class StructureConfig(BaseModel):
     vp_poc_above_score: float = 10
     vp_poc_below_score: float = -10
     vp_clean_air_score: float = 5
+    liquidity_sweep_enabled: bool = True
+    liquidity_sweep_lookback: int = 20
+    liquidity_sweep_score: float = 12.0
+    liquidity_sweep_require_volume: bool = True
+    equal_high_low_enabled: bool = True
+    equal_high_low_pct: float = 0.001
+    fvg_min_gap_atr: float = 0.25
 
 
 class RegimeConfig(BaseModel):
@@ -94,6 +113,8 @@ class RegimeConfig(BaseModel):
     compression_percentile: float = 20
     lookback_days: int = 90
     btc_move_threshold: float = 0.02
+    macro_dxy_risk_off_enabled: bool = True
+    macro_dxy_risk_off_pct: float = 0.008
     weights: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 

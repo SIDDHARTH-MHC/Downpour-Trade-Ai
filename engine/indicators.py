@@ -52,3 +52,21 @@ def adx_wilder(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 
     minus_di = 100 * pd.Series(minus_dm, index=high.index).ewm(alpha=1 / period, adjust=False).mean() / atr
     dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
     return dx.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+
+
+def session_vwap(df: pd.DataFrame) -> float:
+    """UTC calendar-day VWAP from typical price × volume."""
+    if df.empty:
+        return 0.0
+    typical = (df["high"] + df["low"] + df["close"]) / 3.0
+    vol = df["volume"].replace(0, np.nan)
+    if "timestamp" in df.columns and len(df) > 1:
+        last_ts = int(df["timestamp"].iloc[-1])
+        day_ms = 86_400_000
+        day_start = (last_ts // day_ms) * day_ms
+        mask = df["timestamp"] >= day_start
+        typical = typical[mask]
+        vol = vol[mask]
+    if vol.sum() == 0 or vol.isna().all():
+        return float(df["close"].iloc[-1])
+    return float((typical * vol).sum() / vol.sum())

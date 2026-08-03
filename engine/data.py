@@ -221,6 +221,31 @@ class DataLayer:
         except Exception:
             return []
 
+    def get_global_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 30) -> list[dict[str, Any]]:
+        """Binance USDM global long/short account ratio (live snapshot + recent history)."""
+        futures_symbol = symbol.replace("/", "")
+        try:
+            return self._retry(
+                self.futures.fapiPublicGetGlobalLongShortAccountRatio,
+                {"symbol": futures_symbol, "period": period, "limit": limit},
+            )
+        except Exception:
+            try:
+                import urllib.parse
+                import urllib.request
+                import json as _json
+
+                qs = urllib.parse.urlencode(
+                    {"symbol": futures_symbol, "period": period, "limit": limit}
+                )
+                url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?{qs}"
+                req = urllib.request.Request(url, headers={"User-Agent": "DownpourTradeAI/1.0"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = _json.loads(resp.read().decode())
+                return data if isinstance(data, list) else []
+            except Exception:
+                return []
+
     def get_top_volume_pairs(self, top_n: int = 20) -> list[str]:
         tickers = self._retry(self.spot.fetch_tickers)
         usdt_pairs = [

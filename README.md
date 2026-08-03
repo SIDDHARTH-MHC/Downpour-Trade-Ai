@@ -62,7 +62,10 @@ Deploy `web/` to Vercel with `NEXT_PUBLIC_API_URL` pointing at your API.
 engine/     Deterministic signal core (unchanged by API/web)
 api/        FastAPI wrapper, scheduler, SQLite, Telegram alerts
 web/        Next.js dashboard
+research/   Walk-forward experiment runner (promotion gate)
 ```
+
+**Research:** Before changing lane scores, run `python cli.py research walk-forward --compare` and record results in `research/experiments/`. See `Research_Roadmap.md` and `.cursor/rules/engine-promotion-gate.mdc`.
 
 Four lanes → strict synthesizer → NO-TRADE by default:
 
@@ -78,4 +81,6 @@ Four lanes → strict synthesizer → NO-TRADE by default:
 - Win rates come from history; regimes change. Re-run `calibrate` monthly.
 - Order-book walls can be spoofed; capped influence reflects that.
 - The engine cannot see news. A SHOCK-regime gate stands aside when volatility explodes.
+- **Backtest/calibration** use degraded structure (no book) and often no taker flow — see [docs/BACKTEST_FIDELITY.md](docs/BACKTEST_FIDELITY.md).
+- **Scale:** SQLite is single-writer; see [docs/INFRASTRUCTURE_SCALE.md](docs/INFRASTRUCTURE_SCALE.md) before multi-replica deploy.
 - This is decision support, not financial advice. Risk only what you can afford to lose.

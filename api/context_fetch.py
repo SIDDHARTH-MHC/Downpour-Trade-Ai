@@ -19,3 +19,12 @@ def fetch_etf_context() -> dict[str, Any]:
         "reference_tickers": ["IBIT", "FBTC", "GBTC", "ARKB"],
         "disclaimer": "Not used in signals. Whale/ETF dashboards deferred until data SLA exists.",
     }
+
+
+def fetch_liquidations_context() -> dict[str, Any]:
+    """Liquidation aggregates require a vendor feed (e.g. CoinGlass). Dashboard/context only."""
+    return {
+        "status": "reference_only",
+        "message": "Live liquidation heatmaps require a premium data provider. Label any future overlay as modeled/estimated.",
+        "disclaimer": "Not used in lane scores. See Research_Roadmap.md R6.",
+    }

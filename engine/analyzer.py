@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from engine.calibration import apply_confidence
 from engine.config import EngineConfig, load_config
+from engine.config_hash import config_hash
 from engine.data import DataLayer
 from engine.explanation import build_explanation
 from engine.lanes.flow import analyze_flow
@@ -14,8 +15,9 @@ from engine.lanes.structure import analyze_structure
 from engine.lanes.technical import analyze_technical
 from engine.models import Verdict
 from engine.risk import build_trade_plan
-from engine.structure_events import detect_structure_events
+from engine.macro_context import macro_risk_snapshot
 from engine.synthesizer import synthesize
+from engine.indicators import atr_wilder
 
 
 def analyze_symbol(
@@ -40,6 +42,7 @@ def analyze_symbol(
     oi = data.get_oi(symbol, tf)
     book = data.get_book(symbol, limit=book_limit)
     trades = [] if light else data.get_trades(symbol)
+    long_short = data.get_global_long_short_ratio(symbol) if not light else []
 
     btc_df = None
     if symbol.split("/")[0] != "BTC":
@@ -49,12 +52,19 @@ def analyze_symbol(
             btc_df = None
 
     technical = analyze_technical(df, htf, cfg)
-    flow = analyze_flow(df, funding, oi, trades, cfg)
+    flow = analyze_flow(df, funding, oi, trades, long_short, cfg)
     structure = analyze_structure(df, book, symbol, cfg)
-    regime = analyze_regime(df, df_4h, symbol, btc_df, cfg, tf=tf)
+    macro = macro_risk_snapshot() if not light else None
+    regime = analyze_regime(df, df_4h, symbol, btc_df, cfg, tf=tf, macro=macro)
 
     verdict = synthesize([technical, flow, structure], regime, cfg)
-    verdict.structure_events = detect_structure_events(df, cfg.structure.swing_fractal)
+    atr_val = float(atr_wilder(df["high"], df["low"], df["close"], 14).iloc[-1])
+    verdict.structure_events = detect_structure_events(
+        df,
+        cfg.structure.swing_fractal,
+        atr=atr_val,
+        fvg_min_gap_atr=cfg.structure.fvg_min_gap_atr,
+    )
 
     mid_price: float | None = None
     if light:
@@ -75,4 +85,5 @@ def analyze_symbol(
     verdict.symbol = symbol
     verdict.timeframe = tf
     verdict.timestamp = datetime.fromtimestamp(last_ts / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    verdict.config_hash = config_hash(cfg)
     return verdict
