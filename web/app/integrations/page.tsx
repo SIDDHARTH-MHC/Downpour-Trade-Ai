@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Button } from "@/components/ui/button";
 
 export default function IntegrationsPage() {
   const { data, error, isLoading, mutate } = useSWR("integrations", () => api.integrationsGet());
@@ -28,10 +30,7 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Integrations</h1>
-        <p className="text-sm text-muted">Discord &amp; Slack webhooks for actionable scan alerts</p>
-      </div>
+      <ModuleHeader title="Integrations" description="Discord & Slack webhooks for actionable scan alerts" />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
       {data && (

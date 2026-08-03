@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { groupNavBySection, NAV_ITEMS, NAV_SECTION_LABELS } from "@/lib/navigation";
+import { readRecentSymbols } from "@/hooks/use-recent-symbols";
+import { readWatchlistSymbols } from "@/lib/watchlist-prefs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
+import { useSidebar } from "@/components/shell/SidebarProvider";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -22,8 +25,15 @@ type SidebarNavProps = {
 
 export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
   const pathname = usePathname();
-  const { collapsed, toggle, hydrated } = useSidebarCollapsed();
+  const { collapsed, toggle, hydrated } = useSidebar();
   const groups = groupNavBySection(NAV_ITEMS);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [pinned, setPinned] = useState<string[]>([]);
+
+  useEffect(() => {
+    setRecent(readRecentSymbols());
+    setPinned(readWatchlistSymbols());
+  }, [pathname]);
 
   return (
     <aside
@@ -85,6 +95,46 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
             </div>
           ))}
         </nav>
+        {!collapsed && pinned.length > 0 ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Pinned
+            </p>
+            <ul className="space-y-0.5">
+              {pinned.map((sym) => (
+                <li key={`pin-${sym}`}>
+                  <Link
+                    href={`/pair/${encodeURIComponent(sym)}`}
+                    onClick={onNavigate}
+                    className="block truncate rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  >
+                    {sym}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {!collapsed && recent.length > 0 ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Recent
+            </p>
+            <ul className="space-y-0.5">
+              {recent.map((sym) => (
+                <li key={sym}>
+                  <Link
+                    href={`/pair/${encodeURIComponent(sym)}`}
+                    onClick={onNavigate}
+                    className="block truncate rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  >
+                    {sym}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </ScrollArea>
       <div className="border-t border-border p-2">
         <Button

@@ -4,6 +4,8 @@ import useSWR from "swr";
 import { api } from "@/lib/api";
 import { ScannerHeatmap } from "@/components/ScannerHeatmap";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function HeatmapPage() {
   const { data, error, isLoading } = useSWR("scan-heatmap", () => api.scan("1h"), {
@@ -12,17 +14,16 @@ export default function HeatmapPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Scanner heatmap</h1>
-        <p className="text-sm text-muted">Latest scan — color by verdict</p>
-      </div>
+      <ModuleHeader title="Scanner heatmap" description="Latest scan — color by verdict" />
       <DataStamp label={data?.data_as_of_utc} />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
       {data && data.results.length > 0 && (
-        <div className="card">
-          <ScannerHeatmap results={data.results} />
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <ScannerHeatmap results={data.results} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

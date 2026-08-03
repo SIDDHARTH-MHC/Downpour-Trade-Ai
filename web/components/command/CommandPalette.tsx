@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/navigation";
+import { COMMAND_ACTIONS } from "@/lib/command-registry";
+import { readRecentSymbols } from "@/hooks/use-recent-symbols";
+import { readWatchlistSymbols } from "@/lib/watchlist-prefs";
 import {
   CommandDialog,
   CommandEmpty,
@@ -19,6 +22,10 @@ const SYMBOL_QUICK = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"
 export function CommandPalette() {
   const router = useRouter();
   const { open, setOpen } = useCommandPalette();
+
+  const recentSymbols = useMemo(() => (open ? readRecentSymbols() : []), [open]);
+  const pinnedSymbols = useMemo(() => (open ? readWatchlistSymbols() : []), [open]);
+  const pinnedOnly = pinnedSymbols.filter((s) => !recentSymbols.includes(s));
 
   const run = useCallback(
     (href: string) => {
@@ -41,13 +48,57 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search modules or type a symbol…" />
+      <CommandInput placeholder="Search modules, symbols, or actions…" />
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
+        {pinnedOnly.length > 0 ? (
+          <>
+            <CommandGroup heading="Pinned">
+              {pinnedOnly.map((sym) => (
+                <CommandItem
+                  key={`pin-${sym}`}
+                  value={`pinned ${sym}`}
+                  onSelect={() => run(`/pair/${encodeURIComponent(sym)}`)}
+                >
+                  {sym}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        ) : null}
+        {recentSymbols.length > 0 ? (
+          <>
+            <CommandGroup heading="Recent">
+              {recentSymbols.map((sym) => (
+                <CommandItem
+                  key={`recent-${sym}`}
+                  value={`recent ${sym}`}
+                  onSelect={() => run(`/pair/${encodeURIComponent(sym)}`)}
+                >
+                  {sym}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        ) : null}
         <CommandGroup heading="Symbols">
           {SYMBOL_QUICK.map((sym) => (
             <CommandItem key={sym} value={`symbol ${sym}`} onSelect={() => run(`/pair/${encodeURIComponent(sym)}`)}>
               Open {sym}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          {COMMAND_ACTIONS.map((action) => (
+            <CommandItem
+              key={action.id}
+              value={[action.label, ...action.keywords].join(" ")}
+              onSelect={() => action.href && run(action.href)}
+            >
+              {action.label}
             </CommandItem>
           ))}
         </CommandGroup>

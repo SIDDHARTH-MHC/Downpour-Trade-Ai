@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { JournalEntry, api } from "@/lib/api";
 import { LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
 
 const empty: JournalEntry = { title: "", body: "", symbol: "", tags: "" };
 
@@ -26,10 +27,10 @@ export default function NotebookPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Research notebook</h1>
-        <p className="text-sm text-muted">Log what the engine said vs what you did — stored on the API server</p>
-      </div>
+      <ModuleHeader
+        title="Research notebook"
+        description="Log what the engine said vs what you did — stored on the API server"
+      />
       <div className="card space-y-2 text-sm">
         <input
           className="w-full rounded border border-border bg-slate-900 px-2 py-1"

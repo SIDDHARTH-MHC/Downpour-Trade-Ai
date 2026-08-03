@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { toast } from "sonner";
 import { AlertRule, api } from "@/lib/api";
 import { ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Button } from "@/components/ui/button";
 
 const emptyRule: AlertRule = {
   name: "Actionable signals",
@@ -27,7 +30,7 @@ export default function AlertsPage() {
       setDraft(emptyRule);
       await mutate();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -40,12 +43,10 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Alert builder</h1>
-        <p className="text-sm text-muted">
-          Rules run after each scan. With no rules, default Telegram alerts apply for all LONG/SHORT.
-        </p>
-      </div>
+      <ModuleHeader
+        title="Alert builder"
+        description="Rules run after each scan. With no rules, default Telegram alerts apply for all LONG/SHORT."
+      />
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
@@ -79,14 +80,9 @@ export default function AlertsPage() {
           value={draft.webhook_url}
           onChange={(e) => setDraft({ ...draft, webhook_url: e.target.value })}
         />
-        <button
-          type="button"
-          disabled={saving}
-          onClick={save}
-          className="rounded bg-sky-600 px-4 py-2 disabled:opacity-50"
-        >
+        <Button type="button" disabled={saving} onClick={save}>
           Save rule
-        </button>
+        </Button>
       </div>
 
       {data && (

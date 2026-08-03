@@ -3,18 +3,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCommandPalette } from "@/components/command/CommandPaletteProvider";
-
-const GOTO: Record<string, string> = {
-  d: "/",
-  p: "/portfolio",
-  h: "/history",
-  b: "/backtests",
-  n: "/news",
-};
+import { useShortcutsDialog } from "@/components/command/ShortcutsProvider";
+import { useSidebar } from "@/components/shell/SidebarProvider";
+import { GOTO_ROUTES } from "@/lib/shortcuts";
 
 export function useGlobalKeyboardShortcuts() {
   const router = useRouter();
-  const { setOpen } = useCommandPalette();
+  const { setOpen: setCommandOpen } = useCommandPalette();
+  const { setOpen: setShortcutsOpen } = useShortcutsDialog();
+  const { toggle: toggleSidebar } = useSidebar();
 
   useEffect(() => {
     let pendingG = false;
@@ -31,9 +28,21 @@ export function useGlobalKeyboardShortcuts() {
 
       if (typing) return;
 
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleSidebar();
+        return;
+      }
+
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+
       if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        setOpen(true);
+        setCommandOpen(true);
         return;
       }
 
@@ -47,7 +56,7 @@ export function useGlobalKeyboardShortcuts() {
       }
 
       if (pendingG && !e.metaKey && !e.ctrlKey) {
-        const href = GOTO[e.key.toLowerCase()];
+        const href = GOTO_ROUTES[e.key.toLowerCase()];
         if (href) {
           e.preventDefault();
           pendingG = false;
@@ -62,7 +71,7 @@ export function useGlobalKeyboardShortcuts() {
       document.removeEventListener("keydown", onKeyDown);
       if (gTimer) clearTimeout(gTimer);
     };
-  }, [router, setOpen]);
+  }, [router, setCommandOpen, setShortcutsOpen, toggleSidebar]);
 }
 
 export function GlobalKeyboardShortcuts() {

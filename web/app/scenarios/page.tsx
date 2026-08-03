@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Button } from "@/components/ui/button";
 
 export default function ScenariosPage() {
   const [shockPct, setShockPct] = useState(-5);
@@ -25,10 +27,7 @@ export default function ScenariosPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Scenario simulator</h1>
-        <p className="text-sm text-muted">Stress open tracked signals — heuristic beta vs BTC</p>
-      </div>
+      <ModuleHeader title="Scenario simulator" description="Stress open tracked signals — heuristic beta vs BTC" />
       <div className="card flex flex-wrap items-end gap-3">
         <label className="text-sm">
           BTC shock (%)

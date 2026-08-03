@@ -40,6 +40,14 @@ export default function GlossaryPage() {
         description="What every label on Downpour Trade AI means — deterministic math on live Binance data, no LLM."
       />
 
+      <Section title="Keyboard shortcuts">
+        <p className="text-sm text-muted">
+          Press <strong className="text-slate-200">?</strong> anywhere in the app for the full list. Examples:{" "}
+          <strong className="text-slate-200">⌘K</strong> command palette, <strong className="text-slate-200">G then D</strong>{" "}
+          dashboard, <strong className="text-slate-200">⌘B</strong> toggle sidebar.
+        </p>
+      </Section>
+
       <Section title="Core idea">
         <p className="text-sm text-muted">
           The engine reads live market data, scores four independent{" "}

@@ -7,6 +7,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { MobileNav } from "@/components/shell/MobileNav";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { ShortcutsDialog } from "@/components/command/ShortcutsDialog";
 import { DisclaimerFooter } from "@/components/DisclaimerFooter";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <MobileNav />
       <CommandPalette />
+      <ShortcutsDialog />
     </>
   );
 }

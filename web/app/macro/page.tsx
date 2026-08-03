@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
 
 export default function MacroPage() {
   const { data, error, isLoading } = useSWR("macro", () => api.macroSnapshot(), { refreshInterval: 300_000 });
@@ -12,10 +13,10 @@ export default function MacroPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Macro snapshot</h1>
-        <p className="text-sm text-muted">Global crypto context (CoinGecko) — informs regime; not mixed into lane scores</p>
-      </div>
+      <ModuleHeader
+        title="Macro snapshot"
+        description="Global crypto context (CoinGecko) — informs regime; not mixed into lane scores"
+      />
       <DataStamp label={data?.data_as_of_utc} />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}

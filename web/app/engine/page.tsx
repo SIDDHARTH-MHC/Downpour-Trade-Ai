@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
 
 const LANES = [
   {
@@ -42,16 +43,18 @@ const LANES = [
 export default function EnginePage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Explain the engine</h1>
-        <p className="text-sm text-muted">
-          Deterministic lanes → synthesizer → calibration. See also{" "}
-          <Link href="/glossary" className="text-sky-400 hover:underline">
-            Glossary
-          </Link>
-          .
-        </p>
-      </div>
+      <ModuleHeader
+        title="Explain the engine"
+        description={
+          <>
+            Deterministic lanes → synthesizer → calibration. See also{" "}
+            <Link href="/glossary" className="text-primary hover:underline">
+              Glossary
+            </Link>
+            .
+          </>
+        }
+      />
       {LANES.map((lane) => (
         <article key={lane.id} className="card space-y-2 text-sm">
           <h2 className="text-lg font-semibold text-sky-300">{lane.title}</h2>

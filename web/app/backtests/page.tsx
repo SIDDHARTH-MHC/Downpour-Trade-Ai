@@ -8,6 +8,7 @@ import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFoote
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CalibrationBucketsTable } from "@/components/modules/backtests/CalibrationBucketsTable";
 
 export default function BacktestsPage() {
   const [starting, setStarting] = useState(false);
@@ -88,39 +89,14 @@ export default function BacktestsPage() {
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
+      {data && Object.keys(buckets).length === 0 && !data.running && (
+        <p className="text-sm text-muted-foreground">
+          No calibration data yet. Click &quot;Run calibration&quot; to backtest BTC/USDT and ETH/USDT over 6 months.
+        </p>
+      )}
+
       {data && (
-        <Card className="overflow-x-auto">
-          <CardContent className="p-4">
-          <table className="min-w-full text-sm">
-            <thead className="text-left text-muted">
-              <tr>
-                <th className="pb-2">Bucket</th>
-                <th className="pb-2">Trades</th>
-                <th className="pb-2">Win rate</th>
-                <th className="pb-2">Avg R</th>
-                <th className="pb-2">Profit factor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(buckets).map(([bucket, stats]) => (
-                <tr key={bucket} className="border-t border-border/60">
-                  <td className="py-2">{bucket}</td>
-                  <td className="py-2">{stats.trade_count}</td>
-                  <td className="py-2">{(stats.win_rate * 100).toFixed(1)}%</td>
-                  <td className="py-2">{stats.avg_r.toFixed(2)}</td>
-                  <td className="py-2">{Number(stats.profit_factor).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {Object.keys(buckets).length === 0 && !data.running && (
-            <p className="text-sm text-muted">
-              No calibration data yet. Click &quot;Run calibration&quot; to backtest BTC/USDT and ETH/USDT over 6
-              months.
-            </p>
-          )}
-          </CardContent>
-        </Card>
+        <CalibrationBucketsTable buckets={buckets} />
       )}
     </div>
   );

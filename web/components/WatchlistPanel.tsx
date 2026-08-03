@@ -7,14 +7,14 @@ import { api, Verdict } from "@/lib/api";
 import { PairTable } from "@/components/PairTable";
 import { LoadingCard } from "@/components/DisclaimerFooter";
 
-const STORAGE_KEY = "downpour_watchlist";
+import { WATCHLIST_STORAGE_KEY } from "@/lib/watchlist-prefs";
 
 export function useWatchlist() {
   const [symbols, setSymbols] = useState<string[]>([]);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(WATCHLIST_STORAGE_KEY);
       if (raw) setSymbols(JSON.parse(raw) as string[]);
     } catch {
       setSymbols([]);
@@ -23,7 +23,7 @@ export function useWatchlist() {
 
   const save = useCallback((next: string[]) => {
     setSymbols(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(next));
   }, []);
 
   const add = useCallback(

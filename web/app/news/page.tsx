@@ -5,6 +5,8 @@ import useSWR from "swr";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { Button } from "@/components/ui/button";
 
 const TABS = [
   { id: "", label: "All (BTC focus)" },
@@ -21,20 +23,21 @@ export default function NewsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Context feed</h1>
-        <p className="text-sm text-muted">Owned RSS aggregator — deduped, symbol-tagged, heuristic sentiment</p>
-      </div>
+      <ModuleHeader
+        title="Context feed"
+        description="Owned RSS aggregator — deduped, symbol-tagged, heuristic sentiment"
+      />
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
-          <button
+          <Button
             key={t.id || "all"}
             type="button"
+            size="sm"
+            variant={category === t.id ? "default" : "outline"}
             onClick={() => setCategory(t.id)}
-            className={`rounded px-3 py-1 text-sm ${category === t.id ? "bg-sky-600" : "bg-slate-800"}`}
           >
             {t.label}
-          </button>
+          </Button>
         ))}
       </div>
       <DataStamp label={data?.aggregated_at_utc} />

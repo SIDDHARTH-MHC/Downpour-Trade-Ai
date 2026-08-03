@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
 import { api } from "@/lib/api";
 import { ConfidenceHistoryChart } from "@/components/ConfidenceHistoryChart";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
+import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { HistoryTable } from "@/components/modules/history/HistoryTable";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function HistoryPage() {
+  const [actionFilter, setActionFilter] = useState<"all" | "LONG" | "SHORT" | "NO_TRADE">("all");
   const { data, error, isLoading } = useSWR("history", () => api.history(undefined, 50), {
     refreshInterval: 120_000,
   });
@@ -18,57 +22,35 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Verdict history</h1>
-        <p className="text-sm text-muted">Past signals with outcomes when resolved</p>
-      </div>
+      <ModuleHeader title="Verdict history" description="Past signals with outcomes when resolved" />
       <DataStamp label={data?.data_as_of_utc} />
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
+
       {confHist && confHist.count > 0 && (
-        <div className="card">
-          <h2 className="text-lg font-semibold">Confidence history</h2>
-          <p className="text-sm text-muted">LONG/SHORT signals with WIN / LOSS / OPEN</p>
-          <div className="mt-3">
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div>
+              <h2 className="text-lg font-semibold">Confidence history</h2>
+              <p className="text-sm text-muted-foreground">LONG/SHORT signals with WIN / LOSS / OPEN</p>
+            </div>
             <ConfidenceHistoryChart points={confHist.points} />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
+
       {data && (
-        <div className="card overflow-x-auto">
-          <p className="mb-3 text-sm text-muted">
+        <>
+          <p className="text-sm text-muted-foreground">
             {data.count} records · {wins} non-NO-TRADE · {data.open_outcomes} open outcomes
           </p>
-          <table className="min-w-full text-sm">
-            <thead className="text-left text-muted">
-              <tr>
-                <th className="pb-2">Time</th>
-                <th className="pb-2">Pair</th>
-                <th className="pb-2">TF</th>
-                <th className="pb-2">Action</th>
-                <th className="pb-2">Score</th>
-                <th className="pb-2">Confidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.verdicts.map((v, i) => (
-                <tr key={i} className="border-t border-border/60">
-                  <td className="py-2">{v.timestamp}</td>
-                  <td className="py-2">
-                    <Link href={`/pair/${encodeURIComponent(v.symbol)}`} className="text-sky-400 hover:underline">
-                      {v.symbol}
-                    </Link>
-                  </td>
-                  <td className="py-2">{v.timeframe}</td>
-                  <td className="py-2">{v.action}</td>
-                  <td className="py-2">{v.weighted_score.toFixed(1)}</td>
-                  <td className="py-2">{v.confidence}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <HistoryTable
+            verdicts={data.verdicts}
+            actionFilter={actionFilter}
+            onActionFilterChange={setActionFilter}
+          />
+        </>
       )}
     </div>
   );

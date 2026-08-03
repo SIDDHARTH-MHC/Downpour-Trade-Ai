@@ -6,6 +6,7 @@ import { ChevronRight, Menu, Search } from "lucide-react";
 import { getNavItemForPath, NAV_SECTION_LABELS } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { useCommandPalette } from "@/components/command/CommandPaletteProvider";
+import { useShortcutsDialog } from "@/components/command/ShortcutsProvider";
 
 type TopBarProps = {
   onOpenMobileNav?: () => void;
@@ -22,6 +23,7 @@ function decodePairSymbol(segment: string) {
 export function TopBar({ onOpenMobileNav }: TopBarProps) {
   const pathname = usePathname();
   const { setOpen } = useCommandPalette();
+  const { setOpen: setShortcutsOpen } = useShortcutsDialog();
   const navItem = getNavItemForPath(pathname);
 
   const crumbs: { label: string; href?: string }[] = [];
@@ -78,6 +80,16 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
         </Button>
         <Button type="button" variant="ghost" size="icon" className="sm:hidden" onClick={() => setOpen(true)} aria-label="Search">
           <Search className="h-5 w-5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="hidden sm:inline-flex"
+          onClick={() => setShortcutsOpen(true)}
+          aria-label="Keyboard shortcuts"
+        >
+          <span className="font-mono text-sm text-muted-foreground">?</span>
         </Button>
         <Button type="button" variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
           <Link href="/integrations">
