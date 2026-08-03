@@ -272,8 +272,11 @@ export const api = {
     }),
   deleteAlertRule: (id: number) =>
     fetch(`${API_URL}/alerts/rules/${id}`, { method: "DELETE", cache: "no-store" }),
-  contextNews: (symbol: string) =>
-    fetchJson<NewsContextResponse>(`/context/news?symbol=${encodeURIComponent(symbol)}`),
+  contextNews: (symbol: string, limit = 12, category?: string) => {
+    const params = new URLSearchParams({ symbol, limit: String(limit) });
+    if (category) params.set("category", category);
+    return fetchJson<NewsContextResponse>(`/context/news?${params.toString()}`);
+  },
   contextEtf: () => fetchJson<EtfContextResponse>("/context/etf"),
   liquiditySnapshot: (symbol: string) =>
     fetchJson<LiquiditySnapshotResponse>(`/structure/liquidity?symbol=${encodeURIComponent(symbol)}`),
@@ -362,12 +365,17 @@ export type NewsHeadline = {
   title?: string;
   url?: string | null;
   source?: string;
+  category?: string;
+  published?: string | null;
+  symbols?: string[];
   sentiment?: string;
 };
 
 export type NewsContextResponse = {
   symbol: string;
   base: string;
+  aggregated_at_utc?: string;
+  feed_count?: number;
   headlines: NewsHeadline[];
   disclaimer: string;
 };

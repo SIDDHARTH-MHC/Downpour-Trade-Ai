@@ -33,7 +33,7 @@ def copilot_explain(
         cache_key = f"copilot:{symbol}:{tf}"
 
         def load() -> dict:
-            verdict = analyze_symbol(symbol, tf, persist=False, config=load_config())
+            verdict = analyze_symbol(symbol, tf, light=True, config=load_config())
             payload = verdict.to_dict()
             payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             return enrich_verdict_payload(payload, db)

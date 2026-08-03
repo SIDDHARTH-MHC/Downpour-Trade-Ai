@@ -31,7 +31,7 @@ def compare(
 
         def load(s=sym) -> dict:
             try:
-                verdict = analyze_symbol(s, tf, persist=False, config=cfg)
+                verdict = analyze_symbol(s, tf, light=True, config=cfg)
             except Exception as exc:  # noqa: BLE001
                 raise HTTPException(status_code=502, detail=f"{s}: {exc}") from exc
             payload = verdict.to_dict()

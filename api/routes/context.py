@@ -15,8 +15,13 @@ router = APIRouter()
 
 
 @router.get("/context/news")
-def context_news(request: Request, symbol: str = Query("BTC/USDT")) -> dict:
-    news = fetch_news(symbol)
+def context_news(
+    request: Request,
+    symbol: str = Query("BTC/USDT"),
+    limit: int = Query(12, ge=1, le=50),
+    category: str | None = Query(None, description="news | macro | exchange"),
+) -> dict:
+    news = fetch_news(symbol, limit=limit, category=category)
     return {
         "app": "Downpour Trade AI",
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),

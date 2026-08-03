@@ -29,7 +29,7 @@ def analyze_batch(
     errors: dict[str, str] = {}
     for sym in sym_list:
         try:
-            verdict = analyze_symbol(sym, tf, persist=False, light=True, config=cfg)
+            verdict = analyze_symbol(sym, tf, light=True, config=cfg)
             payload = verdict.to_dict()
             payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             results.append(payload)
