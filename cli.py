@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import typer
@@ -170,6 +171,86 @@ def research_db_migrate() -> None:
     if code != 0:
         raise typer.Exit(code=code)
     console.print("[green]Research DB migrations applied.[/green]")
+
+
+@research_db_app.command("up")
+def research_db_up() -> None:
+    """Start local TimescaleDB via deploy/research/docker-compose.yml."""
+    from research_platform.cli_workflow import docker_db_up
+
+    code = docker_db_up()
+    if code != 0:
+        raise typer.Exit(code=code)
+    console.print("[green]Research database container started (port 5433).[/green]")
+    console.print("Run: [bold]python cli.py research setup --enable --migrate[/bold]")
+
+
+@research_db_app.command("down")
+def research_db_down() -> None:
+    """Stop local TimescaleDB container."""
+    from research_platform.cli_workflow import docker_db_down
+
+    code = docker_db_down()
+    if code != 0:
+        raise typer.Exit(code=code)
+    console.print("[dim]Research database container stopped.[/dim]")
+
+
+@research_app.command("guide")
+def research_guide() -> None:
+    """Print the full research MDS CLI workflow."""
+    from research_platform.cli_workflow import guide_text
+
+    console.print(guide_text())
+
+
+@research_app.command("setup")
+def research_setup(
+    enable: bool = typer.Option(False, "--enable", help="Set RESEARCH_DB_* for this process only"),
+    db_up: bool = typer.Option(False, "--db-up", help="docker compose up -d"),
+    migrate: bool = typer.Option(False, "--migrate", help="Run Alembic migrations"),
+    database_url: str = typer.Option("", help="Override RESEARCH_DATABASE_URL"),
+) -> None:
+    """Bootstrap research DB (optional docker up + migrate)."""
+    from research_platform.cli_workflow import enable_research_env, print_env_hint
+    from research_platform.cli_db import cmd_migrate, print_status
+    from research_platform.cli_workflow import docker_db_up
+
+    if enable:
+        enable_research_env(database_url or None)
+        console.print("[green]Research DB enabled for this CLI session.[/green]")
+    else:
+        console.print("[yellow]Tip:[/yellow] pass [bold]--enable[/bold] or export RESEARCH_DB_ENABLED=true")
+        print_env_hint()
+
+    if db_up:
+        code = docker_db_up()
+        if code != 0:
+            raise typer.Exit(code=code)
+        console.print("[green]Docker database started.[/green]")
+
+    if migrate:
+        if not enable and not os.environ.get("RESEARCH_DB_ENABLED", "").lower() in ("1", "true", "yes"):
+            console.print("[red]Enable research DB first (--enable or export).[/red]")
+            raise typer.Exit(1)
+        code = cmd_migrate()
+        if code != 0:
+            raise typer.Exit(code=code)
+        console.print("[green]Migrations applied.[/green]")
+
+    print_status()
+
+
+@research_app.command("quickstart")
+def research_quickstart(
+    skip_docker: bool = typer.Option(False, "--skip-docker", help="Assume DB already running"),
+) -> None:
+    """Enable research env, start DB, migrate, collect BTC/ETH, run DQ scan."""
+    from research_platform.cli_workflow import run_quickstart
+
+    code = run_quickstart(db_up=not skip_docker, migrate=True, collect=True, dq=True)
+    if code != 0:
+        raise typer.Exit(code=code)
 
 
 @research_app.command("walk-forward")

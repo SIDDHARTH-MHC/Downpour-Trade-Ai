@@ -2,15 +2,24 @@
 
 Phase 1 adds an **optional** PostgreSQL/Timescale database for historical research. The production API continues to use SQLite (`DATABASE_URL`). The deterministic `engine/` path is unchanged.
 
-## Enable locally
+## CLI workflow
 
 ```bash
-docker compose -f deploy/research/docker-compose.yml up -d
+python cli.py research guide          # print all steps
+python cli.py research quickstart     # docker up + migrate + collect + dq-scan
+python cli.py research setup --enable --db-up --migrate
+python cli.py research db status
+python cli.py research collect
+python cli.py research dq-scan
+python cli.py research walk-forward --compare --record
+python cli.py research db down
+```
+
+Legacy manual env (if not using `--enable`):
+
+```bash
 export RESEARCH_DB_ENABLED=true
 export RESEARCH_DATABASE_URL=postgresql+psycopg://downpour:downpour@localhost:5433/downpour_research
-pip install -r requirements.txt
-python cli.py research db migrate
-python cli.py research db status
 ```
 
 Optional internal dashboard APIs (returns 404 when disabled):
