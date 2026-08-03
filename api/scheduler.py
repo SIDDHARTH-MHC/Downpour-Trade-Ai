@@ -6,7 +6,6 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -18,6 +17,7 @@ from engine.analyzer import analyze_symbol
 from engine.calibration import rebuild_calibration
 from engine.config import load_config
 from engine.data import DataLayer
+from engine.outcomes import resolve_outcome_after_signal, verdict_bar_timestamp_ms
 from engine.scan_report import summarize_scan
 
 logger = logging.getLogger("downpour.scheduler")
@@ -42,34 +42,24 @@ def _resolve_open_outcomes(db: Database) -> None:
         plan = payload.get("trade_plan")
         if not plan:
             continue
+        signal_ms = verdict_bar_timestamp_ms(payload)
+        if signal_ms is None:
+            logger.warning("outcome skip %s: missing verdict timestamp", payload.get("symbol"))
+            continue
         symbol = payload["symbol"]
         tf = payload["timeframe"]
         try:
-            df = data.get_ohlcv(symbol, tf, bars=60, validate=False)
+            df = data.get_ohlcv(symbol, tf, bars=120, validate=False)
         except Exception as exc:  # noqa: BLE001
             logger.warning("outcome check failed for %s: %s", symbol, exc)
             continue
-        entry = plan["entry"]
-        sl = plan["stop_loss"]
-        tp1 = plan["tp1"]
-        action = payload["action"]
-        outcome = None
-        for _, row in df.iterrows():
-            high, low = row["high"], row["low"]
-            if action == "LONG":
-                if low <= sl:
-                    outcome = "SL"
-                    break
-                if high >= tp1:
-                    outcome = "TP1"
-                    break
-            else:
-                if high >= sl:
-                    outcome = "SL"
-                    break
-                if low <= tp1:
-                    outcome = "TP1"
-                    break
+        outcome = resolve_outcome_after_signal(
+            df,
+            action=payload["action"],
+            stop_loss=float(plan["stop_loss"]),
+            tp1=float(plan["tp1"]),
+            signal_bar_ms=signal_ms,
+        )
         if outcome:
             db.resolve_outcome(item["outcome_id"], outcome)
 
@@ -235,9 +225,6 @@ def refresh_calibration() -> None:
     db = Database()
     stats = rebuild_calibration(["BTC/USDT", "ETH/USDT", "SOL/USDT"], "1h", 12)
     db.save_calibration(stats)
-    cal_path = Path("data/calibration.json")
-    if cal_path.exists():
-        db.save_calibration(json.loads(cal_path.read_text()))
 
 
 def start_scheduler() -> BackgroundScheduler:

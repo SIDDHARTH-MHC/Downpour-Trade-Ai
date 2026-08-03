@@ -16,6 +16,7 @@ from engine.lanes.structure import analyze_structure
 from engine.lanes.technical import analyze_technical
 from engine.models import LaneResult
 from engine.risk import build_trade_plan
+from engine.score_buckets import score_bucket
 from engine.synthesizer import synthesize
 from engine.utils import htf_factor, resample_ohlcv
 
@@ -110,19 +111,6 @@ def _running_dd(pnls: list[float]) -> float:
         peak = max(peak, equity)
         max_dd = min(max_dd, equity - peak)
     return max_dd
-
-
-def score_bucket(score: float, action: str) -> str:
-    s = score if action == "LONG" else abs(score)
-    if s >= 50:
-        return "50+"
-    if s >= 35:
-        return "35-50"
-    if s <= -50:
-        return "-50-"
-    if s <= -35:
-        return "-50--35"
-    return "neutral"
 
 
 def bucket_stats_from_trades(trades: list[TradeRecord]) -> dict:

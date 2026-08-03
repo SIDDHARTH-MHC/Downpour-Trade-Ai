@@ -7,15 +7,7 @@ from pathlib import Path
 
 from engine.config import EngineConfig, load_config
 from engine.models import Verdict
-
-
-def _score_bucket(score: float, action: str) -> str:
-    s = abs(score)
-    if s >= 50:
-        return "50+"
-    if s >= 35:
-        return "35-50"
-    return "35-50"
+from engine.score_buckets import score_bucket
 
 
 def load_calibration_tables(path: Path | None = None) -> dict:
@@ -34,7 +26,7 @@ def calibrate_label(verdict: Verdict, tables: dict | None = None, config: Engine
     if verdict.action == "NO_TRADE":
         return "N/A"
 
-    bucket = _score_bucket(abs(verdict.weighted_score), verdict.action)
+    bucket = score_bucket(verdict.weighted_score, verdict.action)
     stats = tables.get(bucket)
     if not stats:
         return "confidence: INSUFFICIENT_DATA (no backtest bucket)"

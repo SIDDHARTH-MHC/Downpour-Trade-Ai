@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from engine.backtest import score_bucket
+from engine.score_buckets import score_bucket
 
 
 def bucket_for_verdict(action: str, weighted_score: float) -> str | None:

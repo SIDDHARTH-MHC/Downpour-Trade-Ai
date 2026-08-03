@@ -1,6 +1,7 @@
 import json
 
-from engine.backtest import no_lookahead_score, score_bucket
+from engine.backtest import no_lookahead_score
+from engine.score_buckets import score_bucket
 from engine.lanes.flow import analyze_flow
 from engine.lanes.regime import analyze_regime
 from engine.lanes.structure import analyze_structure
