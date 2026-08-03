@@ -341,10 +341,10 @@ These are **enablers**, not product features:
 | R3 | Implemented | WF compare | — | Equal-high clustering |
 | R4 | Implemented (events) | WF optional | — | FVG in structure_events |
 | R5 | Implemented (evidence) | — | — | UTC session VWAP text |
-| R6 | Context stub | Vendor feed | — | `/context/liquidations` |
+| R6 | Phase A dashboard | Context (estimated) | — | `/context/liquidations` + taker-flow proxy |
 | R7 | Implemented (regime) | Monitor DXY gate | — | Stooq DXY context |
-| R8 | Deferred | Context | — | ETF stub unchanged |
-| R9 | Deferred | Context | — | On-chain not in scope |
+| R8 | Reference proxy | Context | — | Stooq ETF closes via `/context/etf` |
+| R9 | Public APIs | Context | — | `/context/onchain` (BTC mempool + chain stats) |
 
 ---
 

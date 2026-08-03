@@ -34,17 +34,31 @@ def _oi_as_of(oi_df: pd.DataFrame, ts: int) -> pd.DataFrame:
     return oi_df[oi_df["timestamp"] <= ts].tail(48).reset_index(drop=True)
 
 
+def _long_short_as_of(history: list[dict], ts: int) -> list[dict]:
+    prior = [h for h in history if int(h.get("timestamp") or 0) <= ts]
+    return prior[-30:]
+
+
 def _flow_for_backtest(
     window: pd.DataFrame,
     funding_history: list[dict],
     oi_df: pd.DataFrame,
+    long_short_history: list[dict],
     cfg: EngineConfig,
 ) -> LaneResult:
     ts = int(window["timestamp"].iloc[-1])
     funding = _funding_as_of(funding_history, ts)
     oi_slice = _oi_as_of(oi_df, ts)
+    ls_slice = _long_short_as_of(long_short_history, ts)
     if funding.get("current") or len(oi_slice) >= 24:
-        return analyze_flow(window, funding, oi_slice, trades=[], config=cfg)
+        return analyze_flow(
+            window,
+            funding,
+            oi_slice,
+            trades=[],
+            long_short_history=ls_slice,
+            config=cfg,
+        )
     return LaneResult(
         name="flow",
         score=0.0,
@@ -179,6 +193,7 @@ def run_backtest(
     df: pd.DataFrame | None = None,
     funding_history: list[dict] | None = None,
     oi_full: pd.DataFrame | None = None,
+    long_short_history: list[dict] | None = None,
 ) -> BacktestResult:
     cfg = config or load_config()
     data = DataLayer(cfg)
@@ -190,6 +205,9 @@ def run_backtest(
         funding_history = data.get_funding_history(symbol, limit=500)
     if oi_full is None:
         oi_full = data.get_oi_history(symbol, tf, limit=500)
+    if long_short_history is None:
+        period = tf if tf in {"5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d"} else "1h"
+        long_short_history = data.get_global_long_short_ratio(symbol, period=period, limit=500)
     flow_available = bool(funding_history) or len(oi_full) >= 24
 
     htf_tf = DataLayer.htf_timeframe(tf, cfg.technical.htf_multiplier)
@@ -209,7 +227,7 @@ def run_backtest(
 
         technical = analyze_technical(window, htf_window, cfg)
         regime = analyze_regime(window, df_4h, symbol, None, cfg, tf=tf)
-        flow = _flow_for_backtest(window, funding_history, oi_full, cfg)
+        flow = _flow_for_backtest(window, funding_history, oi_full, long_short_history, cfg)
         structure = analyze_structure(window, book=None, symbol=symbol, config=cfg)
         verdict = synthesize([technical, flow, structure], regime, cfg)
         mid = float(window["close"].iloc[-1])
@@ -275,6 +293,8 @@ def run_walk_forward(
     df = data.get_ohlcv_history(symbol, tf, bars=total_bars, validate=False)
     funding_history = data.get_funding_history(symbol, limit=500)
     oi_full = data.get_oi_history(symbol, tf, limit=500)
+    ls_period = tf if tf in {"5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d"} else "1h"
+    long_short_history = data.get_global_long_short_ratio(symbol, period=ls_period, limit=500)
 
     oos_trades: list[TradeRecord] = []
     is_trades: list[TradeRecord] = []
@@ -287,12 +307,12 @@ def run_walk_forward(
         is_result = run_backtest(
             symbol, tf, months=1, config=cfg,
             start_bar=start, end_bar=val_start,
-            df=df, funding_history=funding_history, oi_full=oi_full,
+            df=df, funding_history=funding_history, oi_full=oi_full, long_short_history=long_short_history,
         )
         oos_result = run_backtest(
             symbol, tf, months=1, config=cfg,
             start_bar=val_start, end_bar=val_end,
-            df=df, funding_history=funding_history, oi_full=oi_full,
+            df=df, funding_history=funding_history, oi_full=oi_full, long_short_history=long_short_history,
         )
         is_trades.extend(is_result.trades)
         oos_trades.extend(oos_result.trades)

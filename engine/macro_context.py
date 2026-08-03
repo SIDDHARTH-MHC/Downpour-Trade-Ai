@@ -33,10 +33,20 @@ def macro_risk_snapshot() -> dict:
     """
     DXY proxy via Stooq (dx.f). Used for regime evidence only — not a lane score.
     """
+    from engine.config import load_config
+
+    cfg = load_config().regime
+    threshold = cfg.macro_dxy_risk_off_pct
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     rows = _fetch_stooq_daily("dx.f")
     if len(rows) < 2:
-        return {"updated_at_utc": updated, "dxy_24h_pct": None, "risk_off": False, "source": "stooq"}
+        return {
+            "updated_at_utc": updated,
+            "dxy_24h_pct": None,
+            "risk_off": False,
+            "risk_off_threshold_pct": threshold,
+            "source": "stooq",
+        }
 
     prev_close = rows[-2][1]
     last_close = rows[-1][1]
@@ -45,13 +55,16 @@ def macro_risk_snapshot() -> dict:
     else:
         pct = (last_close - prev_close) / prev_close
 
+    risk_off = pct is not None and pct >= threshold
     return {
         "updated_at_utc": updated,
         "dxy_last": last_close,
         "dxy_24h_pct": pct,
-        "risk_off": pct is not None and pct > 0,
+        "risk_off": risk_off,
+        "risk_off_threshold_pct": threshold,
+        "regime_gate_enabled": cfg.macro_dxy_risk_off_enabled,
         "source": "stooq",
-        "disclaimer": "Context only — does not change lane scores unless regime macro gate enabled.",
+        "disclaimer": "Context only — regime weight nudge when macro_dxy_risk_off_enabled.",
     }
 
 

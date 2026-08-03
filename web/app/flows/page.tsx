@@ -10,10 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DEFAULT_SYMBOLS = "BTC/USDT,ETH/USDT,SOL/USDT,XRP/USDT,DOGE/USDT";
+const LIQ_SYMBOL = "BTC/USDT";
 
 export default function FlowsPage() {
   const [symbols, setSymbols] = useState(DEFAULT_SYMBOLS);
   const { data, error, isLoading, mutate } = useSWR(["flows", symbols], () => api.flowsSnapshot(symbols), {
+    refreshInterval: 120_000,
+  });
+  const { data: liq, error: liqErr } = useSWR(["liq", LIQ_SYMBOL], () => api.contextLiquidations(LIQ_SYMBOL), {
     refreshInterval: 120_000,
   });
 
@@ -38,6 +42,17 @@ export default function FlowsPage() {
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
       {data && <FlowsTable rows={data.rows} />}
+      {liq?.liquidations && (
+        <div className="card space-y-2 text-sm">
+          <h2 className="font-semibold text-sky-300">Liquidation stress (estimated)</h2>
+          <p>{liq.liquidations.message}</p>
+          {liq.liquidations.elevated_forced_flow && (
+            <p className="text-amber-400/90">Elevated taker sell flow — use as cascade context only.</p>
+          )}
+          {liqErr && <ErrorState message={(liqErr as Error).message} />}
+          <p className="text-xs text-muted">{liq.liquidations.disclaimer}</p>
+        </div>
+      )}
     </div>
   );
 }

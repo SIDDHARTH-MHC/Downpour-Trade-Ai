@@ -188,6 +188,47 @@ export type MacroSnapshotResponse = {
   data_as_of_utc: string;
 };
 
+export type MacroRiskResponse = {
+  risk: {
+    updated_at_utc: string;
+    dxy_last?: number;
+    dxy_24h_pct?: number | null;
+    risk_off: boolean;
+    risk_off_threshold_pct?: number;
+    regime_gate_enabled?: boolean;
+    source: string;
+    disclaimer?: string;
+  };
+  data_as_of_utc: string;
+};
+
+export type LiquidationsContextResponse = {
+  liquidations: {
+    status: string;
+    symbol: string;
+    updated_at_utc: string;
+    message: string;
+    elevated_forced_flow?: boolean;
+    disclaimer: string;
+    stress?: Record<string, unknown>;
+  };
+  data_as_of_utc: string;
+};
+
+export type OnchainContextResponse = {
+  onchain: {
+    updated_at_utc: string;
+    asset: string;
+    status: string;
+    disclaimer: string;
+    market_price_usd?: number;
+    hash_rate?: number;
+    mempool_tx_count?: number;
+    fees_sat_vb?: Record<string, number | undefined>;
+  };
+  data_as_of_utc: string;
+};
+
 export type BatchAnalyzeResponse = {
   timeframe: string;
   results: Verdict[];
@@ -245,6 +286,10 @@ export const api = {
   flowsSnapshot: (symbols: string) =>
     fetchJson<FlowsSnapshotResponse>(`/flows/snapshot?symbols=${encodeURIComponent(symbols)}`),
   macroSnapshot: () => fetchJson<MacroSnapshotResponse>("/macro/snapshot"),
+  macroRisk: () => fetchJson<MacroRiskResponse>("/macro/risk"),
+  contextLiquidations: (symbol = "BTC/USDT") =>
+    fetchJson<LiquidationsContextResponse>(`/context/liquidations?symbol=${encodeURIComponent(symbol)}`),
+  contextOnchain: () => fetchJson<OnchainContextResponse>("/context/onchain"),
   analyzeBatch: (symbols: string[], tf = "1h") =>
     fetchJson<BatchAnalyzeResponse>(
       `/analyze/batch?symbols=${encodeURIComponent(symbols.join(","))}&tf=${tf}`
@@ -386,6 +431,13 @@ export type EtfContextResponse = {
     message: string;
     reference_tickers: string[];
     disclaimer: string;
+    updated_at_utc?: string;
+    proxies?: Array<{
+      ticker: string;
+      last_close_usd?: number;
+      daily_change_pct?: number | null;
+      error?: string;
+    }>;
   };
 };
 

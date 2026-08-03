@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from engine.context_data import (
+    fetch_etf_reference_context,
+    fetch_liquidations_context as _liquidations,
+    fetch_onchain_context as _onchain,
+)
 from engine.news_aggregator import news_payload
 
 
@@ -12,19 +17,12 @@ def fetch_news(symbol: str, limit: int = 12, category: str | None = None) -> dic
 
 
 def fetch_etf_context() -> dict[str, Any]:
-    """Spot BTC ETF flow data requires a licensed feed; provide reference context only."""
-    return {
-        "status": "reference_only",
-        "message": "Live ETF flow totals require a premium data provider. Use as macro context alongside BTC price action.",
-        "reference_tickers": ["IBIT", "FBTC", "GBTC", "ARKB"],
-        "disclaimer": "Not used in signals. Whale/ETF dashboards deferred until data SLA exists.",
-    }
+    return fetch_etf_reference_context()
 
 
-def fetch_liquidations_context() -> dict[str, Any]:
-    """Liquidation aggregates require a vendor feed (e.g. CoinGlass). Dashboard/context only."""
-    return {
-        "status": "reference_only",
-        "message": "Live liquidation heatmaps require a premium data provider. Label any future overlay as modeled/estimated.",
-        "disclaimer": "Not used in lane scores. See Research_Roadmap.md R6.",
-    }
+def fetch_liquidations_context(symbol: str = "BTC/USDT") -> dict[str, Any]:
+    return _liquidations(symbol)
+
+
+def fetch_onchain_context() -> dict[str, Any]:
+    return _onchain()

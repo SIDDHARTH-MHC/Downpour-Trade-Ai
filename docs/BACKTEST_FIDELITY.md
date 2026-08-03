@@ -9,6 +9,7 @@ Live `/analyze` and scheduled **scan** use more market data than historical **ba
 | OHLCV | Yes | Yes (no lookahead: `df.iloc[:i+1]`) |
 | Order book / walls | Yes | **No** (`book=None`, `structure_degraded=True`) |
 | Taker trade imbalance | Yes (unless `light=True`) | **No** (`trades=[]`) |
+| Global long/short ratio | Yes (unless `light=True`) | **Yes** when Binance history exists at bar time (`long_short_history` aligned by timestamp) |
 | Funding + OI | Yes | Yes when history exists at bar time; else flow lane skipped |
 | Regime / technical | Yes | Yes |
 
