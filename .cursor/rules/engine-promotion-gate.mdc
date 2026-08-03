@@ -1,0 +1,67 @@
+---
+description: Gate all synthesizer and lane-scoring changes; frozen architecture promotion criteria
+globs: engine/**/*.py,config.yaml,engine/config.py
+alwaysApply: true
+---
+
+# Engine promotion gate (frozen architecture)
+
+Downpour Trade AI is a **deterministic** intelligence platform. The lane → regime → synthesizer → risk → calibration split is **frozen**. Do not grow indicator count or add parallel scoring systems without research promotion.
+
+## Pipeline (required for any scoring change)
+
+```
+Research → Experiment → Walk-forward → Calibration impact → Production config
+```
+
+Follow **`Research_Roadmap.md`** for experiment design. Never: Idea → Implementation → Synthesizer.
+
+## No feature enters the synthesizer unless ALL are true
+
+- **Deterministic** — Same inputs (bar snapshot + config hash) → same scores and verdict; no LLM, randomness, or wall-clock in the hot path.
+- **Reproducible** — Documented rule with evidence strings; replay-compatible.
+- **Historical data available** — Backtest can apply the rule on `df.iloc[:i+1]` or on a **versioned feature snapshot** with the same semantics; otherwise **Context / Evidence / Trust only** (see `docs/BACKTEST_FIDELITY.md`).
+- **Walk-forward tested** — Compared to baseline **B0**; OOS PF and WF acceptance criteria in `Research_Roadmap.md` §2.
+- **Calibration improved or neutral** — Bucket monotonicity and OOS trade count gates; must not degrade WF pass without documented trade-off.
+- **Statistically justified** — Practical gates in Research Roadmap (not “felt good”).
+- **Explainable** — Every score change has `evidence[]` lines; no opaque composites.
+- **Replay compatible** — Appears in replay timeline or lane evidence when relevant.
+
+If any check fails → **Reject**, or promote as **Evidence (P1)**, **Regime modifier (P2)**, or **Confidence modifier (P3)** only—**not** lane score.
+
+## Architecture boundaries (do not blur)
+
+| Layer | Role |
+|-------|------|
+| **Engine lanes** | Technical, Structure, Flow — scored features only after promotion |
+| **Regime** | Tradeability, weights, optional warnings—not duplicate synthesizers |
+| **Synthesizer** | Alignment, thresholds, NO_TRADE default |
+| **Risk** | SL/TP/size; reads structure levels, does not invent signals |
+| **Calibration / Trust** | Buckets, WF, confidence labels |
+| **Context** | News, ETF, macro, whales—**never** feed synthesizer unless promoted via research |
+| **UI / API enrich** | Projection and display only; no hidden scoring |
+
+## Single ownership
+
+Every capability has **one owner lane or layer** (see `Quant_Architecture_Blueprint.md` §5). Do not duplicate logic across Flow, Structure, and Risk.
+
+## Preferred actions
+
+- **Simplify** correlated signals (e.g. technical orthogonalization) before adding new indicators.
+- **Extend** existing lanes; use `structure_events` for evidence-only patterns.
+- **Version** config and calibration artifacts (`config_hash`, `calibration_id`) when promotion lands.
+
+## Reject without discussion
+
+- LLM or NLP **scores** in engine paths
+- Narrative/news/social **lane scores**
+- Duplicate indicators (e.g. EMA 9/21 alongside 20/50) without **replacing** correlated terms and a passed **R0** experiment
+- Parallel “strategy builder” or second synthesizer
+- Features that competitors ship but fail reproducibility or WF
+
+## References
+
+- `Research_Roadmap.md` — experiment cards and acceptance
+- `Quant_Architecture_Blueprint.md` — scale and quant direction
+- `Capability_Gap_Analysis.md` — classification (score vs context)
+- `docs/BACKTEST_FIDELITY.md` — live vs backtest degradation
