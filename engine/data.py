@@ -86,8 +86,15 @@ class DataLayer:
 
         cached: pd.DataFrame | None = None
         if cache_path.exists():
-            cached = pd.read_parquet(cache_path)
-            cached["timestamp"] = cached["timestamp"].astype("int64")
+            try:
+                cached = pd.read_parquet(cache_path)
+                cached["timestamp"] = cached["timestamp"].astype("int64")
+            except Exception:
+                try:
+                    cache_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                cached = None
 
         def fetch(limit: int, since: int | None = None) -> list[list[float]]:
             return self._retry(self.spot.fetch_ohlcv, symbol, tf, since=since, limit=limit)
@@ -114,7 +121,7 @@ class DataLayer:
         for col in ["open", "high", "low", "close", "volume"]:
             df[col] = df[col].astype("float64")
 
-        df.to_parquet(cache_path, index=False)
+        df.to_parquet(cache_path, index=False, engine="pyarrow", compression="snappy")
         if validate:
             self._validate_freshness(df, tf)
         return df
