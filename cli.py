@@ -17,7 +17,17 @@ from engine.calibration import rebuild_calibration
 from engine.config import load_config
 
 app = typer.Typer(name="downpour", help="Downpour Trade AI — deterministic crypto signal engine")
+db_app = typer.Typer(help="Production SQLite (API); schema via CREATE IF NOT EXISTS")
+app.add_typer(db_app, name="db")
 console = Console()
+
+
+def _research_enable_if_requested(enable: bool, database_url: str) -> None:
+    if not enable:
+        return
+    from research_platform.cli_workflow import enable_research_env
+
+    enable_research_env(database_url or None)
 
 
 def _render_verdict(verdict, json_only: bool = False) -> None:
@@ -147,30 +157,152 @@ def scan(
         console.print("-" * 60)
 
 
+@db_app.command("init")
+def production_db_init() -> None:
+    """Create or upgrade production SQLite tables (same as API startup)."""
+    from api.db import Database
+
+    db = Database()
+    db.init()
+    console.print(f"[green]SQLite schema ready at[/green] {db.path}")
+
+
 research_app = typer.Typer(help="Walk-forward experiments (see Research_Roadmap.md)")
 app.add_typer(research_app, name="research")
 
 research_db_app = typer.Typer(help="Research MDS database (PostgreSQL/Timescale; optional)")
 research_app.add_typer(research_db_app, name="db")
 
+research_run_app = typer.Typer(help="Run scheduled research jobs once (manual trigger)")
+research_app.add_typer(research_run_app, name="run")
+
+
+@research_app.command("automation-status")
+def research_automation_status_cmd() -> None:
+    """Show last run metadata for scheduled research + calibration policy."""
+    import json
+
+    from research_platform.jobs import research_automation_status
+
+    console.print(json.dumps(research_automation_status(), indent=2))
+
+
+@research_run_app.command("collector")
+def research_run_collector() -> None:
+    from research_platform.jobs import job_collect_historical_data
+
+    console.print(job_collect_historical_data())
+
+
+@research_run_app.command("dq")
+def research_run_dq() -> None:
+    from research_platform.jobs import job_daily_data_quality_scan
+
+    console.print(job_daily_data_quality_scan())
+
+
+@research_run_app.command("walk-forward")
+def research_run_walk_forward() -> None:
+    from research_platform.jobs import job_weekly_walk_forward
+
+    console.print(job_weekly_walk_forward())
+
+
+@research_app.command("scheduler")
+def research_scheduler_service(
+    foreground: bool = typer.Option(
+        False,
+        "--foreground",
+        help="Run dedicated APScheduler loop (otherwise use API scheduler on uvicorn)",
+    ),
+) -> None:
+    """Run research automation scheduler in foreground (optional)."""
+    from research_platform.cli_workflow import enable_research_env
+    from research_platform.config import get_research_settings
+
+    enable_research_env()
+    if not get_research_settings().research_scheduler_enabled:
+        console.print("[yellow]Set RESEARCH_SCHEDULER_ENABLED=true[/yellow]")
+        raise typer.Exit(1)
+    if not foreground:
+        console.print(
+            "Production: enable RESEARCH_SCHEDULER_ENABLED and run [bold]uvicorn api.main:app[/bold]. "
+            "Jobs attach to the API BackgroundScheduler."
+        )
+        console.print("Dev-only foreground loop: [bold]python cli.py research scheduler --foreground[/bold]")
+        return
+    from research_platform.scheduler_service import run_blocking_scheduler
+
+    run_blocking_scheduler()
+
 
 @research_db_app.command("status")
-def research_db_status() -> None:
+def research_db_status(
+    enable: bool = typer.Option(False, "--enable", help="Enable RESEARCH_DB_* for this command only"),
+    database_url: str = typer.Option("", help="Override RESEARCH_DATABASE_URL"),
+) -> None:
     """Show research DB configuration and connectivity."""
+    _research_enable_if_requested(enable, database_url)
     from research_platform.cli_db import print_status
 
     print_status()
 
 
+@research_db_app.command("current")
+def research_db_current(
+    enable: bool = typer.Option(False, "--enable", help="Enable RESEARCH_DB_* for this command only"),
+    database_url: str = typer.Option("", help="Override RESEARCH_DATABASE_URL"),
+) -> None:
+    """Print Alembic revision for the research database."""
+    _research_enable_if_requested(enable, database_url)
+    from research_platform.cli_db import cmd_current
+
+    code = cmd_current()
+    if code != 0:
+        raise typer.Exit(code=code)
+
+
 @research_db_app.command("migrate")
-def research_db_migrate() -> None:
+def research_db_migrate(
+    enable: bool = typer.Option(False, "--enable", help="Enable RESEARCH_DB_* for this command only"),
+    database_url: str = typer.Option("", help="Override RESEARCH_DATABASE_URL"),
+) -> None:
     """Apply Alembic migrations to the research database."""
+    _research_enable_if_requested(enable, database_url)
     from research_platform.cli_db import cmd_migrate
 
     code = cmd_migrate()
     if code != 0:
         raise typer.Exit(code=code)
-    console.print("[green]Research DB migrations applied.[/green]")
+    console.print("[green]Research DB migrations applied (head).[/green]")
+
+
+@research_db_app.command("update")
+def research_db_update(
+    enable: bool = typer.Option(
+        True,
+        "--enable/--no-enable",
+        help="Enable RESEARCH_DB_* for this process (default: on)",
+    ),
+    db_up: bool = typer.Option(False, "--db-up", help="Start local Timescale via docker compose"),
+    database_url: str = typer.Option("", help="Override RESEARCH_DATABASE_URL"),
+) -> None:
+    """Start DB (optional), apply Alembic head, print status — run after pulling schema changes."""
+    from research_platform.cli_db import cmd_migrate, print_status
+    from research_platform.cli_workflow import docker_db_up, enable_research_env
+
+    if enable:
+        enable_research_env(database_url or None)
+    if db_up:
+        code = docker_db_up()
+        if code != 0:
+            raise typer.Exit(code=code)
+        console.print("[green]Docker database started.[/green]")
+    code = cmd_migrate()
+    if code != 0:
+        raise typer.Exit(code=code)
+    console.print("[green]Research schema at Alembic head.[/green]")
+    print_status()
 
 
 @research_db_app.command("up")
@@ -182,7 +314,7 @@ def research_db_up() -> None:
     if code != 0:
         raise typer.Exit(code=code)
     console.print("[green]Research database container started (port 5433).[/green]")
-    console.print("Run: [bold]python cli.py research setup --enable --migrate[/bold]")
+    console.print("Run: [bold]python cli.py research db update --enable[/bold]")
 
 
 @research_db_app.command("down")

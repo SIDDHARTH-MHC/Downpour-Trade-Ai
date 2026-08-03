@@ -20,6 +20,13 @@ def _run(cmd: list[str], *, cwd: Path | None = None) -> int:
 def docker_db_up() -> int:
     if not COMPOSE_FILE.is_file():
         raise SystemExit(f"Missing {COMPOSE_FILE}")
+    import shutil
+
+    if shutil.which("docker") is None:
+        raise SystemExit(
+            "Docker not found in PATH. Install Docker Desktop or run migrations against "
+            "a remote Postgres by setting RESEARCH_DATABASE_URL."
+        )
     return _run(["docker", "compose", "-f", str(COMPOSE_FILE), "up", "-d"])
 
 
@@ -55,26 +62,38 @@ Research MDS — CLI workflow (production engine unchanged)
   1. Start Timescale (local)
        python cli.py research db up
 
-  2. One-shot setup (enable env in-process + migrate)
-       python cli.py research setup --enable --db-up --migrate
+  2. Apply schema updates (after git pull)
+       python cli.py research db update --enable --db-up
+       # or: research db up && research db migrate --enable
 
-  3. Status
-       python cli.py research db status
+  3. Status / Alembic revision
+       python cli.py research db status --enable
+       python cli.py research db current --enable
 
-  4. Ingest market data into MDS
+  4. Production SQLite (API meta, verdicts — no Alembic)
+       python cli.py db init
+
+  5. Ingest market data into MDS
        python cli.py research collect --symbols BTC/USDT,ETH/USDT
 
-  5. Data quality (stdout report)
+  6. Data quality (stdout report)
        python cli.py research dq-scan --symbol BTC/USDT
 
-  6. Walk-forward + reproducibility artifact
+  7. Walk-forward + reproducibility artifact
        python cli.py research walk-forward --compare --record
 
-  7. Full local smoke test
+  8. Full local smoke test
        python cli.py research quickstart
 
-  8. Stop database container
+  9. Stop database container
        python cli.py research db down
+
+  10. Scheduled automation (API uvicorn or --foreground scheduler)
+       export RESEARCH_SCHEDULER_ENABLED=true
+       python cli.py research automation-status
+       python cli.py research run collector|dq|walk-forward
+
+  Promotion: always manual — scheduler never applies config promotion.
 
 Docs: docs/RESEARCH_PLATFORM.md, docs/HISTORICAL_DATA_ARCHITECTURE.md
 """.strip()

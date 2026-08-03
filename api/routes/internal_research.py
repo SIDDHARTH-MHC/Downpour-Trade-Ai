@@ -21,10 +21,13 @@ def _require_internal() -> None:
 @router.get("/summary")
 def research_summary() -> dict:
     _require_internal()
+    from research_platform.jobs import research_automation_status
+
     repo = get_research_repository()
     return {
         "data_as_of_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "database": repo.health(),
+        "automation": research_automation_status(),
     }
 
 

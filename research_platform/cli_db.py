@@ -23,9 +23,24 @@ def cmd_status() -> dict:
 def cmd_migrate() -> int:
     settings = get_research_settings()
     if not settings.research_db_enabled:
-        raise SystemExit("RESEARCH_DB_ENABLED must be true to run migrations.")
+        raise SystemExit(
+            "RESEARCH_DB_ENABLED must be true to run migrations. "
+            "Use: python cli.py research db migrate --enable"
+        )
     create_research_engine(force_new=True)
     code = migration_runner.upgrade("head")
+    dispose_research_engine()
+    return code
+
+
+def cmd_current() -> int:
+    settings = get_research_settings()
+    if not settings.research_db_enabled:
+        raise SystemExit(
+            "RESEARCH_DB_ENABLED must be true. Use: python cli.py research db current --enable"
+        )
+    create_research_engine(force_new=True)
+    code = migration_runner.current()
     dispose_research_engine()
     return code
 

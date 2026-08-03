@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     discord_webhook_url: str = ""
     slack_webhook_url: str = ""
     openai_api_key: str = ""
+    calibration_schedule_enabled: bool = True
+    calibration_symbols: str = "BTC/USDT,ETH/USDT,SOL/USDT"
+    calibration_months: int = 12
+    calibration_day_of_month: int = 1
+    calibration_hour_utc: int = 3
 
 
 @lru_cache

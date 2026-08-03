@@ -222,9 +222,64 @@ def _run_calibration_safe(symbols: list[str], tf: str, months: int) -> None:
 
 
 def refresh_calibration() -> None:
-    db = Database()
-    stats = rebuild_calibration(["BTC/USDT", "ETH/USDT", "SOL/USDT"], "1h", 12)
-    db.save_calibration(stats)
+    """Legacy hook — prefer scheduled monthly calibration."""
+    settings = get_settings()
+    sym_list = [s.strip() for s in settings.calibration_symbols.split(",") if s.strip()]
+    run_calibration_async(sym_list, "1h", settings.calibration_months)
+
+
+def _run_monthly_calibration() -> None:
+    settings = get_settings()
+    if not settings.calibration_schedule_enabled:
+        return
+    sym_list = [s.strip() for s in settings.calibration_symbols.split(",") if s.strip()]
+    logger.info("starting scheduled monthly calibration")
+    run_calibration_async(sym_list, "1h", settings.calibration_months)
+
+
+def register_research_scheduler_jobs(sched: BackgroundScheduler) -> None:
+    from research_platform.config import get_research_settings
+    from research_platform.jobs import (
+        job_collect_historical_data,
+        job_daily_data_quality_scan,
+        job_weekly_walk_forward,
+    )
+
+    rs = get_research_settings()
+    if not rs.research_scheduler_enabled:
+        return
+
+    sched.add_job(
+        job_collect_historical_data,
+        "interval",
+        hours=max(1, rs.research_collector_interval_hours),
+        id="research_collector",
+        replace_existing=True,
+    )
+    sched.add_job(
+        job_daily_data_quality_scan,
+        "cron",
+        hour=rs.research_dq_hour_utc,
+        minute=0,
+        id="research_dq_daily",
+        replace_existing=True,
+    )
+    sched.add_job(
+        job_weekly_walk_forward,
+        "cron",
+        day_of_week=rs.research_wf_day_of_week,
+        hour=rs.research_wf_hour_utc,
+        minute=0,
+        id="research_wf_weekly",
+        replace_existing=True,
+    )
+    logger.info(
+        "research automation jobs registered (collector=%sh, dq=%02d:00 UTC, wf=%s %02d:00 UTC)",
+        rs.research_collector_interval_hours,
+        rs.research_dq_hour_utc,
+        rs.research_wf_day_of_week,
+        rs.research_wf_hour_utc,
+    )
 
 
 def start_scheduler() -> BackgroundScheduler:
@@ -242,7 +297,17 @@ def start_scheduler() -> BackgroundScheduler:
         kwargs={"tf": "1h", "limit": settings.scan_pair_limit},
     )
     _scheduler.add_job(refresh_pairs, "interval", hours=24, id="pairs")
-    _scheduler.add_job(refresh_calibration, "interval", weeks=1, id="calibration")
+    if settings.calibration_schedule_enabled:
+        _scheduler.add_job(
+            _run_monthly_calibration,
+            "cron",
+            day=settings.calibration_day_of_month,
+            hour=settings.calibration_hour_utc,
+            minute=0,
+            id="calibration_monthly",
+            replace_existing=True,
+        )
+    register_research_scheduler_jobs(_scheduler)
     _scheduler.add_job(_resolve_open_outcomes, "interval", minutes=30, id="outcomes", args=[Database()])
     _scheduler.start()
     logger.info("scheduler started")
