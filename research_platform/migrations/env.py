@@ -16,7 +16,17 @@ if str(ROOT) not in sys.path:
 
 from research_platform.config import get_research_settings  # noqa: E402
 from research_platform.db.base import ResearchBase  # noqa: E402
-from research_platform.models.meta import ResearchPlatformMeta  # noqa: F401, E402
+from research_platform.models import (  # noqa: F401, E402
+    Candle,
+    ExchangeEvent,
+    FundingRate,
+    IngestWatermark,
+    LongShortRatio,
+    MacroDaily,
+    OpenInterest,
+    ResearchPlatformMeta,
+    UniverseRegistry,
+)
 
 config = context.config
 if config.config_file_name is not None:

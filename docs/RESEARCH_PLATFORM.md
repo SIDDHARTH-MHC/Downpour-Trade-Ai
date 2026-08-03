@@ -16,7 +16,14 @@ python cli.py research db status
 
 ## Migrations
 
-Alembic lives under `research_platform/migrations/`. Downgrade is supported for the foundation migration (drops `research_platform_meta` only).
+Alembic lives under `research_platform/migrations/`. Revisions:
+
+| Revision | Phase | Content |
+|----------|-------|---------|
+| `0001_research_foundation` | 1 | `research_platform_meta`, Timescale extension (optional) |
+| `0002_mds_core` | 2 | MDS tables + hypertable/compression hooks |
+
+Downgrade is supported stepwise.
 
 ## Architecture
 
