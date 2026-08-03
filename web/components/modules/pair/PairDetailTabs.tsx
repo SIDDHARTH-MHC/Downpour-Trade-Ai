@@ -36,7 +36,8 @@ export function PairDetailTabs({ symbol, tf, verdict, confHist }: PairDetailTabs
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+      <div className="-mx-1 overflow-x-auto px-1 pb-1 lg:overflow-visible">
+        <TabsList className="inline-flex h-auto min-w-min flex-nowrap justify-start gap-1">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="lanes">Lanes</TabsTrigger>
         <TabsTrigger value="structure">Structure</TabsTrigger>
@@ -45,7 +46,8 @@ export function PairDetailTabs({ symbol, tf, verdict, confHist }: PairDetailTabs
         <TabsTrigger value="context">Context</TabsTrigger>
         <TabsTrigger value="history">History</TabsTrigger>
         <TabsTrigger value="coach">Coach</TabsTrigger>
-      </TabsList>
+        </TabsList>
+      </div>
 
       <TabsContent value="overview">
         <Panel>

@@ -9,7 +9,9 @@ import { KPIRow } from "@/components/dashboard/KPIRow";
 import { ScanTable } from "@/components/dashboard/ScanTable";
 import { ScanRejectionChart } from "@/components/dashboard/ScanRejectionChart";
 import { DashboardHeatmapStrip } from "@/components/dashboard/DashboardHeatmapStrip";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LayoutDashboard } from "lucide-react";
 
 export default function DashboardPage() {
   const { data, error, isLoading } = useSWR<ScanResponse>("scan-1h", () => api.scan("1h"), {
@@ -48,11 +50,11 @@ export default function DashboardPage() {
       )}
 
       {data && data.total === 0 && !data.scan_running && (
-        <Alert className="border-warning/30 bg-warning/5 py-2">
-          <AlertDescription className="text-sm text-warning">
-            No scan data yet. First scan runs automatically after deploy — refresh in 1–2 minutes.
-          </AlertDescription>
-        </Alert>
+        <EmptyState
+          icon={LayoutDashboard}
+          title="Waiting for first scan"
+          description="The scheduler runs a full scan after deploy. Refresh in a minute or open Status to confirm the engine is healthy."
+        />
       )}
 
       {data && data.total > 0 && (

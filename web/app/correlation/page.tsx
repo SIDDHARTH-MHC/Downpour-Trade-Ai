@@ -6,7 +6,9 @@ import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
 import { CorrelationHeatmap } from "@/components/modules/correlation/CorrelationHeatmap";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { Input } from "@/components/ui/input";
+import { LineChart } from "lucide-react";
 
 const DEFAULT = "BTC/USDT,ETH/USDT,SOL/USDT,XRP/USDT,DOGE/USDT,BNB/USDT";
 
@@ -26,7 +28,14 @@ export default function CorrelationPage() {
       <DataStamp label={data?.data_as_of_utc} />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
-      {data && <CorrelationHeatmap data={data} />}
+      {data && data.rows.length === 0 && (
+        <EmptyState
+          icon={LineChart}
+          title="No correlation rows"
+          description="Check your symbol list format (comma-separated pairs like BTC/USDT,ETH/USDT)."
+        />
+      )}
+      {data && data.rows.length > 0 && <CorrelationHeatmap data={data} />}
     </div>
   );
 }

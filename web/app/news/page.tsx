@@ -6,7 +6,9 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Newspaper } from "lucide-react";
 
 const TABS = [
   { id: "", label: "All (BTC focus)" },
@@ -43,7 +45,14 @@ export default function NewsPage() {
       <DataStamp label={data?.aggregated_at_utc} />
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
-      {data && (
+      {data && data.headlines.length === 0 && (
+        <EmptyState
+          icon={Newspaper}
+          title="No headlines in this category"
+          description="Feeds may be temporarily quiet or still fetching. Try All or refresh in a moment."
+        />
+      )}
+      {data && data.headlines.length > 0 && (
         <div className="card space-y-3 text-sm">
           {data.headlines.map((h, i) => (
             <article key={i} className="border-b border-border/40 pb-3">

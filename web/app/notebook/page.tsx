@@ -5,6 +5,8 @@ import useSWR from "swr";
 import { JournalEntry, api } from "@/lib/api";
 import { LoadingCard } from "@/components/DisclaimerFooter";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { EmptyState } from "@/components/shell/EmptyState";
+import { BookOpen } from "lucide-react";
 
 const empty: JournalEntry = { title: "", body: "", symbol: "", tags: "" };
 
@@ -75,7 +77,13 @@ export default function NotebookPage() {
               <p className="mt-2 text-xs text-muted">{e.created_at}</p>
             </article>
           ))}
-          {data.entries.length === 0 && <p className="text-muted">No entries yet.</p>}
+          {data.entries.length === 0 && (
+            <EmptyState
+              icon={BookOpen}
+              title="No journal entries"
+              description="Capture what the engine showed versus your decision — entries sync to the API server."
+            />
+          )}
         </div>
       )}
     </div>

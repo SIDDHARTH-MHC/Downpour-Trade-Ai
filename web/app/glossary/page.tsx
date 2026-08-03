@@ -246,7 +246,7 @@ export default function GlossaryPage() {
           </p>
           <p className="mt-3">
             Ready to explore?{" "}
-            <Link href="/" className="text-primary hover:underline">
+            <Link href="/" className="font-medium text-primary underline underline-offset-2">
               Open Dashboard
             </Link>
           </p>

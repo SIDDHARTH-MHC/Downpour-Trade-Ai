@@ -6,8 +6,10 @@ import { api } from "@/lib/api";
 import { ConfidenceHistoryChart } from "@/components/ConfidenceHistoryChart";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { HistoryTable } from "@/components/modules/history/HistoryTable";
 import { Card, CardContent } from "@/components/ui/card";
+import { History } from "lucide-react";
 
 export default function HistoryPage() {
   const [actionFilter, setActionFilter] = useState<"all" | "LONG" | "SHORT" | "NO_TRADE">("all");
@@ -40,7 +42,14 @@ export default function HistoryPage() {
         </Card>
       )}
 
-      {data && (
+      {data && data.verdicts.length === 0 && (
+        <EmptyState
+          icon={History}
+          title="No verdict history yet"
+          description="Stored LONG/SHORT and NO_TRADE records will appear here after the API persists scans."
+        />
+      )}
+      {data && data.verdicts.length > 0 && (
         <>
           <p className="text-sm text-muted-foreground">
             {data.count} records · {wins} non-NO-TRADE · {data.open_outcomes} open outcomes

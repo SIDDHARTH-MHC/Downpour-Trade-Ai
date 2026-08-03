@@ -8,6 +8,7 @@ import { StatusBar } from "@/components/shell/StatusBar";
 import { MobileNav } from "@/components/shell/MobileNav";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { ShortcutsDialog } from "@/components/command/ShortcutsDialog";
+import { MainContentFocus } from "@/components/shell/MainContentFocus";
 import { DisclaimerFooter } from "@/components/DisclaimerFooter";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -24,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SheetContent>
         </Sheet>
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <MainContentFocus />
           <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
           <main className="flex-1 overflow-x-hidden px-4 py-6 pb-24 lg:px-6 lg:pb-6">
             <div className="mx-auto w-full max-w-[1600px]">{children}</div>

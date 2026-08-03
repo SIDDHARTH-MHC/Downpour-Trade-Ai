@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { AlertRule, api } from "@/lib/api";
 import { ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
 
 const emptyRule: AlertRule = {
   name: "Actionable signals",
@@ -85,7 +87,14 @@ export default function AlertsPage() {
         </Button>
       </div>
 
-      {data && (
+      {data && data.rules.length === 0 && (
+        <EmptyState
+          icon={Bell}
+          title="No custom alert rules"
+          description="Default Telegram alerts still apply for actionable LONG/SHORT when Telegram is configured on the server."
+        />
+      )}
+      {data && data.rules.length > 0 && (
         <div className="card overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="text-left text-muted">
@@ -113,7 +122,6 @@ export default function AlertsPage() {
               ))}
             </tbody>
           </table>
-          {data.rules.length === 0 && <p className="text-muted">No custom rules yet.</p>}
         </div>
       )}
     </div>

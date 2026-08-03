@@ -7,7 +7,9 @@ import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFoote
 import { ModuleHeader } from "@/components/shell/ModuleHeader";
 import { MetricTile } from "@/components/dashboard/MetricTile";
 import { PortfolioPositionsTable } from "@/components/modules/portfolio/PortfolioPositionsTable";
+import { EmptyState } from "@/components/shell/EmptyState";
 import { Input } from "@/components/ui/input";
+import { PieChart } from "lucide-react";
 
 export default function PortfolioPage() {
   const [equity, setEquity] = useState(10_000);
@@ -45,7 +47,15 @@ export default function PortfolioPage() {
               status={data.portfolio_heat_pct > 5 ? "warn" : "ok"}
             />
           </div>
-          <PortfolioPositionsTable positions={data.positions} />
+          {data.positions.length > 0 ? (
+            <PortfolioPositionsTable positions={data.positions} />
+          ) : (
+            <EmptyState
+              icon={PieChart}
+              title="No open tracked positions"
+              description="Actionable signals with trade plans appear here when the engine marks them open in history."
+            />
+          )}
           <p className="text-xs text-muted-foreground">{data.disclaimer}</p>
         </>
       )}
