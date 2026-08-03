@@ -36,12 +36,14 @@ from api.routes.compare import router as compare_router
 from api.routes.context import router as context_router
 from api.routes.copilot import router as copilot_router
 from api.routes.integrations import router as integrations_router
+from api.routes.internal_research import router as internal_research_router
 from api.routes.journal import router as journal_router
 from api.routes.portfolio import router as portfolio_router
 from api.routes.replay import router as replay_router
 from api.routes.status import router as status_router
 from api.scheduler import start_scheduler, stop_scheduler
 from api.settings import get_settings
+from research_platform.config import get_research_settings
 
 logging.basicConfig(level=logging.INFO)
 
@@ -95,6 +97,8 @@ def create_app() -> FastAPI:
     app.include_router(journal_router)
     app.include_router(portfolio_router)
     app.include_router(integrations_router)
+    if get_research_settings().research_internal_api_enabled:
+        app.include_router(internal_research_router)
 
     @app.get("/")
     def root() -> dict:

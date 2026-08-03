@@ -178,6 +178,7 @@ def research_walk_forward(
     symbols: str = typer.Option("BTC/USDT,ETH/USDT", help="Comma-separated pairs"),
     months: int = typer.Option(12, "--months", min=1, max=18),
     compare: bool = typer.Option(False, "--compare", help="Run all R0 variants"),
+    record: bool = typer.Option(False, "--record", help="Write reproducibility artifact bundle"),
 ) -> None:
     """EXP-R0: technical orthogonalization walk-forward."""
     from research.runner import compare_r0_variants, run_r0_walk_forward
@@ -187,6 +188,22 @@ def research_walk_forward(
         results = compare_r0_variants(sym_list, months=months)
     else:
         results = [run_r0_walk_forward(variant, sym, months) for sym in sym_list]
+
+    if record:
+        from research_platform.experiments.registry import ExperimentRegistry
+
+        reg = ExperimentRegistry()
+        for r in results:
+            reg.create_run_bundle(
+                experiment_code="EXP-2026-001",
+                variant=r.variant,
+                run_kind="walk_forward",
+                symbols=[r.symbol],
+                timeframe="1h",
+                months=months,
+                metrics=r.to_dict(),
+            )
+        console.print("[dim]Recorded experiment artifacts under research/artifacts/[/dim]")
 
     table = Table(title="Walk-forward (research)")
     table.add_column("Variant")
@@ -203,6 +220,42 @@ def research_walk_forward(
             "yes" if r.accepted else "no",
         )
     console.print(table)
+
+
+@research_app.command("collect")
+def research_collect(
+    symbols: str = typer.Option("BTC/USDT,ETH/USDT", help="Comma-separated pairs"),
+    timeframe: str = typer.Option("1h", help="Bar timeframe"),
+    bars: int = typer.Option(500, help="OHLCV bars per symbol"),
+    flows: bool = typer.Option(True, help="Also ingest funding/OI/L-S"),
+) -> None:
+    """Incremental MDS ingest via DataLayer (requires RESEARCH_DB_ENABLED)."""
+    from research_platform.collector.mds_collector import MdsCollector
+
+    coll = MdsCollector()
+    for sym in [s.strip() for s in symbols.split(",") if s.strip()]:
+        out = coll.ingest_symbol_candles(sym, timeframe=timeframe, bars=bars)
+        console.print(out)
+        if flows:
+            console.print(coll.ingest_flows(sym, timeframe=timeframe))
+
+
+@research_app.command("dq-scan")
+def research_dq_scan(
+    symbol: str = typer.Option("BTC/USDT"),
+    timeframe: str = typer.Option("1h"),
+    bars: int = typer.Option(500),
+) -> None:
+    """Run OHLCV data quality scan (reporting only; uses live fetch)."""
+    import json
+
+    from engine.config import load_config
+    from engine.data import DataLayer
+    from research_platform.dq.scanner import scan_ohlcv_frame
+
+    df = DataLayer(load_config()).get_ohlcv_history(symbol, timeframe, bars=bars, validate=False)
+    report = scan_ohlcv_frame(df, symbol=symbol, timeframe=timeframe)
+    console.print(json.dumps(report, indent=2, default=str))
 
 
 if __name__ == "__main__":

@@ -27,6 +27,27 @@ from research_platform.models import (  # noqa: F401, E402
     ResearchPlatformMeta,
     UniverseRegistry,
 )
+from research_platform.models.governance import (  # noqa: F401, E402
+    DatasetVersion,
+    EngineRelease,
+    EngineReleaseAttribution,
+    Experiment,
+    ExperimentRun,
+    PromotionRecord,
+)
+from research_platform.models.platform_extras import (  # noqa: F401, E402
+    EngineCapabilityMatrix,
+    ExperimentTag,
+    FeatureStoreEntry,
+    ResearchJob,
+    ResearchTag,
+)
+from research_platform.models.quality import (  # noqa: F401, E402
+    DataLineageEvent,
+    DataQualityIssue,
+    DataQualityReport,
+    DataRepair,
+)
 
 config = context.config
 if config.config_file_name is not None:
