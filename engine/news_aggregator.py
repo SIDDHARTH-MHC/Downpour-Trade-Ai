@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import time
 import urllib.error
@@ -13,6 +14,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 Category = Literal["news", "macro", "exchange"]
+FetchKind = Literal["rss", "bybit_api", "okx_api"]
 
 USER_AGENT = "DownpourTradeAI/1.0 (+https://downpourtrade.shop; context-only aggregator)"
 
@@ -21,8 +23,42 @@ USER_AGENT = "DownpourTradeAI/1.0 (+https://downpourtrade.shop; context-only agg
 class FeedSource:
     feed_id: str
     name: str
-    url: str
     category: Category
+    url: str | None = None
+    kind: FetchKind = "rss"
+
+
+# Public RSS + official exchange announcement APIs (context-only; links point to publisher).
+FEED_SOURCES: list[FeedSource] = [
+    # Crypto news
+    FeedSource("coindesk", "CoinDesk", "news", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+    FeedSource("cointelegraph", "Cointelegraph", "news", "https://cointelegraph.com/rss"),
+    FeedSource("theblock", "The Block", "news", "https://www.theblock.co/rss.xml"),
+    FeedSource("bitcoinmagazine", "Bitcoin Magazine", "news", "https://bitcoinmagazine.com/feed"),
+    FeedSource("coinbase_blog", "Coinbase Blog", "news", "https://www.coinbase.com/blog/rss.xml"),
+    FeedSource("ethereum_blog", "Ethereum Foundation", "news", "https://blog.ethereum.org/feed.xml"),
+    # Macroeconomics
+    FeedSource("fed_press", "Federal Reserve", "macro", "https://www.federalreserve.gov/feeds/press_all.xml"),
+    FeedSource("fed_monetary", "Fed / FOMC", "macro", "https://www.federalreserve.gov/feeds/press_monetary.xml"),
+    FeedSource(
+        "ecb_press",
+        "ECB",
+        "macro",
+        "https://www.ecb.europa.eu/press/govc/pressconf/html/index_include.en.rss",
+    ),
+    FeedSource("boj_whatsnew", "Bank of Japan", "macro", "https://www.boj.or.jp/en/whatsnew/whatsnew.xml"),
+    FeedSource(
+        "treasury_press",
+        "US Treasury",
+        "macro",
+        "https://home.treasury.gov/system/files/136/TreasuryPressRSS.xml",
+    ),
+    FeedSource("bls_releases", "BLS (CPI/PPI)", "macro", "https://www.bls.gov/feed/bls_latest.rss"),
+    # Exchange announcements
+    FeedSource("binance_ann", "Binance", "exchange", "https://www.binance.com/en/support/announcement/rss"),
+    FeedSource("bybit_ann", "Bybit", "exchange", kind="bybit_api"),
+    FeedSource("okx_ann", "OKX", "exchange", kind="okx_api"),
+]
 
 
 @dataclass
@@ -35,50 +71,6 @@ class NewsArticle:
     symbols: list[str] = field(default_factory=list)
     sentiment: str = "Neutral"  # Bullish | Bearish | Neutral
 
-
-# Official / public RSS endpoints. The Block omitted — licensing not verified for redistribution.
-FEED_SOURCES: list[FeedSource] = [
-    # Crypto news
-    FeedSource("coindesk", "CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/", "news"),
-    FeedSource("cointelegraph", "Cointelegraph", "https://cointelegraph.com/rss", "news"),
-    FeedSource("bitcoinmagazine", "Bitcoin Magazine", "https://bitcoinmagazine.com/feed", "news"),
-    FeedSource("coinbase_blog", "Coinbase Blog", "https://www.coinbase.com/blog/rss.xml", "news"),
-    FeedSource("ethereum_blog", "Ethereum Foundation", "https://blog.ethereum.org/feed.xml", "news"),
-    # Macroeconomics
-    FeedSource("fed_press", "Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml", "macro"),
-    FeedSource("fed_monetary", "Fed / FOMC", "https://www.federalreserve.gov/feeds/press_monetary.xml", "macro"),
-    FeedSource(
-        "ecb_press",
-        "ECB",
-        "https://www.ecb.europa.eu/press/govc/pressconf/html/index_include.en.rss",
-        "macro",
-    ),
-    FeedSource(
-        "boj_whatsnew",
-        "Bank of Japan",
-        "https://www.boj.or.jp/en/whatsnew/whatsnew.xml",
-        "macro",
-    ),
-    FeedSource(
-        "treasury_press",
-        "US Treasury",
-        "https://home.treasury.gov/system/files/136/TreasuryPressRSS.xml",
-        "macro",
-    ),
-    FeedSource(
-        "bls_releases",
-        "BLS (CPI/PPI)",
-        "https://www.bls.gov/feed/bls_latest.rss",
-        "macro",
-    ),
-    # Exchange announcements (RSS where published; failures are skipped silently)
-    FeedSource(
-        "binance_ann",
-        "Binance",
-        "https://www.binance.com/en/support/announcement/rss",
-        "exchange",
-    ),
-]
 
 SYMBOL_PATTERNS: dict[str, list[str]] = {
     "BTC": [r"\bbitcoin\b", r"\bbtc\b", r"\$btc\b"],
@@ -149,6 +141,94 @@ def _fetch_bytes(url: str, timeout: int = 14) -> bytes | None:
         return None
 
 
+def _fetch_json(url: str, timeout: int = 18) -> dict | list | None:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
+        return None
+
+
+def _ms_to_pub(ms: int | str | None) -> str | None:
+    if ms is None:
+        return None
+    try:
+        ts = int(ms)
+        if ts > 10_000_000_000:
+            ts //= 1000
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def _make_article(
+    source: FeedSource,
+    title: str,
+    url: str | None,
+    published: str | None,
+    extra_text: str = "",
+) -> NewsArticle:
+    blob = f"{title} {extra_text}".strip()
+    syms = tag_symbols(blob)
+    if source.category == "news" and "ethereum" in source.feed_id:
+        syms = sorted(set(syms + ["ETH"]))
+    if "bitcoin" in source.feed_id.lower():
+        syms = sorted(set(syms + ["BTC"]))
+    return NewsArticle(
+        title=title,
+        url=url,
+        source=source.name,
+        category=source.category,
+        published=published,
+        symbols=syms,
+        sentiment=tag_sentiment(blob),
+    )
+
+
+def _fetch_bybit(source: FeedSource, max_items: int = 15) -> list[NewsArticle]:
+    raw = _fetch_json(
+        "https://api.bybit.com/v5/announcements/index?locale=en-US&limit=" + str(max_items)
+    )
+    if not isinstance(raw, dict):
+        return []
+    items = (raw.get("result") or {}).get("list") or []
+    articles: list[NewsArticle] = []
+    for item in items[:max_items]:
+        if not isinstance(item, dict):
+            continue
+        title = (item.get("title") or "").strip()
+        if not title:
+            continue
+        url = item.get("url")
+        pub = _ms_to_pub(item.get("publishTime") or item.get("dateTimestamp"))
+        desc = (item.get("description") or "").strip()
+        articles.append(_make_article(source, title, url, pub, desc))
+    return articles
+
+
+def _fetch_okx(source: FeedSource, max_items: int = 15) -> list[NewsArticle]:
+    raw = _fetch_json(f"https://www.okx.com/api/v5/support/announcements?page=1&limit={max_items}")
+    if not isinstance(raw, dict) or raw.get("code") != "0":
+        return []
+    pages = raw.get("data") or []
+    details: list[dict] = []
+    for page in pages:
+        if isinstance(page, dict):
+            details.extend(page.get("details") or [])
+    articles: list[NewsArticle] = []
+    for item in details[:max_items]:
+        if not isinstance(item, dict):
+            continue
+        title = (item.get("title") or "").strip()
+        if not title:
+            continue
+        url = item.get("url")
+        pub = _ms_to_pub(item.get("businessPTime") or item.get("pTime"))
+        articles.append(_make_article(source, title, url, pub))
+    return articles
+
+
 def _parse_rss_items(root: ET.Element) -> list[tuple[str, str | None, str | None]]:
     items: list[tuple[str, str | None, str | None]] = []
     for elem in root.iter():
@@ -208,6 +288,12 @@ def tag_sentiment(text: str) -> str:
 
 
 def _fetch_feed(source: FeedSource, max_items: int = 15) -> list[NewsArticle]:
+    if source.kind == "bybit_api":
+        return _fetch_bybit(source, max_items=max_items)
+    if source.kind == "okx_api":
+        return _fetch_okx(source, max_items=max_items)
+    if not source.url:
+        return []
     raw = _fetch_bytes(source.url)
     if not raw:
         return []
@@ -217,23 +303,7 @@ def _fetch_feed(source: FeedSource, max_items: int = 15) -> list[NewsArticle]:
         return []
     articles: list[NewsArticle] = []
     for title, link, pub in _parse_rss_items(root)[:max_items]:
-        blob = title
-        syms = tag_symbols(blob)
-        if source.category == "news" and "ethereum" in source.feed_id:
-            syms = sorted(set(syms + ["ETH"]))
-        if "bitcoin" in source.feed_id.lower():
-            syms = sorted(set(syms + ["BTC"]))
-        articles.append(
-            NewsArticle(
-                title=title,
-                url=link,
-                source=source.name,
-                category=source.category,
-                published=pub,
-                symbols=syms,
-                sentiment=tag_sentiment(blob),
-            )
-        )
+        articles.append(_make_article(source, title, link, pub))
     return articles
 
 
@@ -321,5 +391,5 @@ def news_payload(symbol: str, limit: int = 12, category: str | None = None) -> d
         "aggregated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "feed_count": len(FEED_SOURCES),
         "headlines": [article_to_dict(a) for a in articles],
-        "disclaimer": "Context only — aggregated from public RSS feeds; does not affect engine scores.",
+        "disclaimer": "Context only — headlines link to original publishers (RSS/API); does not affect engine scores.",
     }

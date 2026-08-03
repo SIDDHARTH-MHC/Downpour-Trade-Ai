@@ -1,4 +1,9 @@
-from engine.news_aggregator import _dedupe_key, _normalize_title, tag_sentiment, tag_symbols
+from engine.news_aggregator import FEED_SOURCES, _dedupe_key, _normalize_title, tag_sentiment, tag_symbols
+
+
+def test_feed_sources_include_block_bybit_okx():
+    ids = {s.feed_id for s in FEED_SOURCES}
+    assert {"theblock", "bybit_ann", "okx_ann"}.issubset(ids)
 
 
 def test_tag_symbols_btc():

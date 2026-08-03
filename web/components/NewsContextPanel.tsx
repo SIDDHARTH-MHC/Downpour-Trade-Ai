@@ -19,7 +19,7 @@ export function NewsContextPanel({ symbol }: { symbol: string }) {
     <div className="card">
       <h3 className="text-sm font-semibold">News &amp; context</h3>
       <p className="text-xs text-muted">
-        Aggregated RSS (CoinDesk, Cointelegraph, Fed, Binance, …) — never affects scores
+        Aggregated from CoinDesk, The Block, Fed, Binance, Bybit, OKX, … — never affects scores
       </p>
       {data?.feed_count != null && (
         <p className="mt-1 text-xs text-muted">{data.feed_count} sources · {data.aggregated_at_utc}</p>
