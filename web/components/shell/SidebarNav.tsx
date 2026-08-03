@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { groupNavBySection, NAV_ITEMS, NAV_SECTION_LABELS } from "@/lib/navigation";
 import { readRecentSymbols } from "@/hooks/use-recent-symbols";
 import { readWatchlistSymbols } from "@/lib/watchlist-prefs";
+import { isSectionEmphasized } from "@/lib/workspace-prefs";
+import { usePreferences } from "@/components/providers/PreferencesProvider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,7 +28,8 @@ type SidebarNavProps = {
 export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
   const pathname = usePathname();
   const { collapsed, toggle, hydrated } = useSidebar();
-  const groups = groupNavBySection(NAV_ITEMS);
+  const { workspace } = usePreferences();
+  const groups = groupNavBySection(NAV_ITEMS, workspace);
   const [recent, setRecent] = useState<string[]>([]);
   const [pinned, setPinned] = useState<string[]>([]);
 
@@ -63,7 +66,12 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
           {groups.map(({ section, items }) => (
             <div key={section}>
               {!collapsed && (
-                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p
+                  className={cn(
+                    "mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider",
+                    isSectionEmphasized(section, workspace) ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
                   {NAV_SECTION_LABELS[section]}
                 </p>
               )}
@@ -155,13 +163,19 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
 
 export function SidebarNavMobile({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const groups = groupNavBySection(NAV_ITEMS);
+  const { workspace } = usePreferences();
+  const groups = groupNavBySection(NAV_ITEMS, workspace);
 
   return (
     <nav className="space-y-4 p-4">
       {groups.map(({ section, items }) => (
         <div key={section}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p
+            className={cn(
+              "mb-2 text-xs font-semibold uppercase tracking-wide",
+              isSectionEmphasized(section, workspace) ? "text-primary" : "text-muted-foreground"
+            )}
+          >
             {NAV_SECTION_LABELS[section]}
           </p>
           <ul className="space-y-1">

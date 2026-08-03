@@ -4,6 +4,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/shell/AppShell";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { themeBootstrapScript } from "@/lib/theme-bootstrap";
 
 export const metadata: Metadata = {
   title: "Downpour Trade AI",
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript() }} />
+      </head>
       <body className="min-h-screen font-sans">
         <a
           href="#main-content"

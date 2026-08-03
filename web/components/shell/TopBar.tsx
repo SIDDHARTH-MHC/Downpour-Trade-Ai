@@ -7,6 +7,7 @@ import { getNavItemForPath, NAV_SECTION_LABELS } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { useCommandPalette } from "@/components/command/CommandPaletteProvider";
 import { useShortcutsDialog } from "@/components/command/ShortcutsProvider";
+import { WorkspaceMenu } from "@/components/shell/WorkspaceMenu";
 
 type TopBarProps = {
   onOpenMobileNav?: () => void;
@@ -91,6 +92,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
         >
           <span className="font-mono text-sm text-muted-foreground">?</span>
         </Button>
+        <WorkspaceMenu />
         <Button type="button" variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
           <Link href="/integrations">
             <span className="text-muted-foreground">Settings</span>

@@ -42,4 +42,17 @@
   .text-muted {
     @apply text-muted-foreground;
   }
+  .shell-main {
+    padding: var(--space-page-y) var(--space-page-x);
+  }
+  .density-cell {
+    padding-top: var(--space-table-cell-y);
+    padding-bottom: var(--space-table-cell-y);
+  }
+  html[data-density="compact"] .metric-tile {
+    @apply px-2.5 py-1.5;
+  }
+  html[data-density="compact"] .metric-tile-value {
+    @apply text-lg;
+  }
 }

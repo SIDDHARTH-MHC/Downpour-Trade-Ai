@@ -16,12 +16,15 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useCommandPalette } from "@/components/command/CommandPaletteProvider";
+import { usePreferences } from "@/components/providers/PreferencesProvider";
+import { WORKSPACE_PRESETS } from "@/lib/workspace-prefs";
 
 const SYMBOL_QUICK = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"];
 
 export function CommandPalette() {
   const router = useRouter();
   const { open, setOpen } = useCommandPalette();
+  const { setWorkspace, setTheme, setDensity } = usePreferences();
 
   const recentSymbols = useMemo(() => (open ? readRecentSymbols() : []), [open]);
   const pinnedSymbols = useMemo(() => (open ? readWatchlistSymbols() : []), [open]);
@@ -101,6 +104,57 @@ export function CommandPalette() {
               {action.label}
             </CommandItem>
           ))}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Workspace">
+          {WORKSPACE_PRESETS.map((w) => (
+            <CommandItem
+              key={w.id}
+              value={`workspace ${w.label} ${w.description}`}
+              onSelect={() => {
+                setOpen(false);
+                setWorkspace(w.id);
+              }}
+            >
+              Switch to {w.label}
+            </CommandItem>
+          ))}
+          <CommandItem
+            value="theme light appearance"
+            onSelect={() => {
+              setOpen(false);
+              setTheme("light");
+            }}
+          >
+            Theme: Light
+          </CommandItem>
+          <CommandItem
+            value="theme dark appearance"
+            onSelect={() => {
+              setOpen(false);
+              setTheme("dark");
+            }}
+          >
+            Theme: Dark
+          </CommandItem>
+          <CommandItem
+            value="density compact tables"
+            onSelect={() => {
+              setOpen(false);
+              setDensity("compact");
+            }}
+          >
+            Density: Compact
+          </CommandItem>
+          <CommandItem
+            value="density comfortable spacing"
+            onSelect={() => {
+              setOpen(false);
+              setDensity("comfortable");
+            }}
+          >
+            Density: Comfortable
+          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Navigation">

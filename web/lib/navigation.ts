@@ -19,6 +19,8 @@ import {
   TrendingUp,
   Waves,
 } from "lucide-react";
+import type { WorkspaceId } from "@/lib/workspace-prefs";
+import { getWorkspacePreset } from "@/lib/workspace-prefs";
 
 export type NavSection = "quick" | "markets" | "research" | "workspace" | "system";
 
@@ -69,10 +71,28 @@ export function getNavItemForPath(pathname: string): NavItem | undefined {
   );
 }
 
-export function groupNavBySection(items: NavItem[]): { section: NavSection; items: NavItem[] }[] {
-  const order: NavSection[] = ["quick", "markets", "research", "workspace", "system"];
-  return order.map((section) => ({
-    section,
-    items: items.filter((i) => i.section === section),
-  })).filter((g) => g.items.length > 0);
+const NAV_SECTION_ORDER: NavSection[] = ["quick", "markets", "research", "workspace", "system"];
+
+export function navSectionOrderForWorkspace(workspace?: WorkspaceId): NavSection[] {
+  if (!workspace) return NAV_SECTION_ORDER;
+  const emphasized = getWorkspacePreset(workspace).emphasizeSections;
+  return [...NAV_SECTION_ORDER].sort((a, b) => {
+    const ae = emphasized.includes(a);
+    const be = emphasized.includes(b);
+    if (ae === be) return NAV_SECTION_ORDER.indexOf(a) - NAV_SECTION_ORDER.indexOf(b);
+    return ae ? -1 : 1;
+  });
+}
+
+export function groupNavBySection(
+  items: NavItem[],
+  workspace?: WorkspaceId
+): { section: NavSection; items: NavItem[] }[] {
+  const order = navSectionOrderForWorkspace(workspace);
+  return order
+    .map((section) => ({
+      section,
+      items: items.filter((i) => i.section === section),
+    }))
+    .filter((g) => g.items.length > 0);
 }

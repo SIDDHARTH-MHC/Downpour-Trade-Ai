@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <MainContentFocus />
           <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
-          <main className="flex-1 overflow-x-hidden px-4 py-6 pb-24 lg:px-6 lg:pb-6">
+          <main className="shell-main flex-1 overflow-x-hidden pb-24 lg:pb-6">
             <div className="mx-auto w-full max-w-[1600px]">{children}</div>
             <div className="mx-auto mt-10 max-w-[1600px]">
               <DisclaimerFooter />

@@ -86,7 +86,7 @@ export function DataTableFrame<T>({
                   {hg.headers.map((header) => {
                     const sorted = header.column.getIsSorted();
                     return (
-                      <th key={header.id} className="px-3 py-2 font-medium">
+                      <th key={header.id} className="density-cell px-3 font-medium">
                         {header.isPlaceholder ? null : header.column.getCanSort() ? (
                           <button
                             type="button"
@@ -122,7 +122,7 @@ export function DataTableFrame<T>({
                 table.getRowModel().rows.map((row) => (
                   <tr key={row.id} className="border-t border-border/60 hover:bg-accent/30">
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-2">
+                      <td key={cell.id} className="density-cell px-3">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
