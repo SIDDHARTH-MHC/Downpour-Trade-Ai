@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     verdict_cache_ttl_sec: int = 60
     orderbook_cache_ttl_sec: int = 10
     rate_limit_per_minute: int = 60
+    cryptopanic_api_key: str = ""
+    discord_webhook_url: str = ""
+    slack_webhook_url: str = ""
+    openai_api_key: str = ""
 
 
 @lru_cache

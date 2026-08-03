@@ -52,6 +52,8 @@ class Verdict:
     trade_plan: TradePlan | None
     reasons: list[str]
     explanation: Explanation | None = None
+    attribution: dict[str, float] | None = None
+    structure_events: list[dict[str, Any]] | None = None
     symbol: str = ""
     timeframe: str = ""
     timestamp: str = ""
@@ -88,6 +90,8 @@ class Verdict:
                 "why_not": self.explanation.why_not,
                 "risk": self.explanation.risk,
             },
+            "attribution": self.attribution,
+            "structure_events": self.structure_events or [],
             "trade_plan": None
             if self.trade_plan is None
             else {

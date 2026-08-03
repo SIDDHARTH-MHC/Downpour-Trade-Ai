@@ -19,12 +19,27 @@ from api.limiter import limiter
 from api.db import Database
 from api.middleware import RequestLogMiddleware
 from api.routes.analyze import router as analyze_router
+from api.routes.batch import router as batch_router
 from api.routes.backtest_stats import router as backtest_router
 from api.routes.calibrate import router as calibrate_router
+from api.routes.confidence_history import router as confidence_history_router
+from api.routes.flows import router as flows_router
+from api.routes.macro import router as macro_router
 from api.routes.health import router as health_router
 from api.routes.history import router as history_router
+from api.routes.trust import router as trust_router
 from api.routes.pairs import router as pairs_router
 from api.routes.scan import router as scan_router
+from api.routes.alerts import router as alerts_router
+from api.routes.coach import router as coach_router
+from api.routes.compare import router as compare_router
+from api.routes.context import router as context_router
+from api.routes.copilot import router as copilot_router
+from api.routes.integrations import router as integrations_router
+from api.routes.journal import router as journal_router
+from api.routes.portfolio import router as portfolio_router
+from api.routes.replay import router as replay_router
+from api.routes.status import router as status_router
 from api.scheduler import start_scheduler, stop_scheduler
 from api.settings import get_settings
 
@@ -60,11 +75,26 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(analyze_router)
+    app.include_router(batch_router)
     app.include_router(scan_router)
     app.include_router(history_router)
     app.include_router(backtest_router)
     app.include_router(calibrate_router)
     app.include_router(pairs_router)
+    app.include_router(trust_router)
+    app.include_router(confidence_history_router)
+    app.include_router(flows_router)
+    app.include_router(macro_router)
+    app.include_router(status_router)
+    app.include_router(replay_router)
+    app.include_router(copilot_router)
+    app.include_router(alerts_router)
+    app.include_router(context_router)
+    app.include_router(compare_router)
+    app.include_router(coach_router)
+    app.include_router(journal_router)
+    app.include_router(portfolio_router)
+    app.include_router(integrations_router)
 
     @app.get("/")
     def root() -> dict:

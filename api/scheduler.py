@@ -13,10 +13,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from api.alerts import alert_scan_hits
 from api.db import Database
 from api.settings import get_settings
+from api.verdict_enrich import enrich_verdict_payload
 from engine.analyzer import analyze_symbol
 from engine.calibration import rebuild_calibration
 from engine.config import load_config
 from engine.data import DataLayer
+from engine.scan_report import summarize_scan
 
 logger = logging.getLogger("downpour.scheduler")
 _scheduler: BackgroundScheduler | None = None
@@ -72,11 +74,12 @@ def _resolve_open_outcomes(db: Database) -> None:
             db.resolve_outcome(item["outcome_id"], outcome)
 
 
-def _scan_symbol(symbol: str, tf: str, *, light: bool, config) -> tuple[str, dict | None]:
+def _scan_symbol(symbol: str, tf: str, *, light: bool, config, db: Database) -> tuple[str, dict | None]:
     try:
         verdict = analyze_symbol(symbol, tf, light=light, config=config)
         payload = verdict.to_dict()
         payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        enrich_verdict_payload(payload, db)
         return symbol, payload
     except Exception as exc:  # noqa: BLE001
         logger.warning("scan skip %s: %s", symbol, exc)
@@ -120,7 +123,7 @@ def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
         completed = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
-                pool.submit(_scan_symbol, symbol, tf, light=light, config=config): symbol
+                pool.submit(_scan_symbol, symbol, tf, light=light, config=config, db=db): symbol
                 for symbol in pairs
             }
             for fut in as_completed(futures):
@@ -136,6 +139,8 @@ def run_scan(tf: str = "1h", limit: int | None = None) -> list[dict]:
                     hits.append(payload)
 
         db.save_scan(tf, results)
+        report = summarize_scan(results)
+        db.set_meta("last_scan_report", json.dumps(report))
         db.set_meta("last_scan_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
         db.set_meta("scan_progress", "done")
         try:

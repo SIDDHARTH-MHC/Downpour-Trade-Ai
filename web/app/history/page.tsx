@@ -3,10 +3,14 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { ConfidenceHistoryChart } from "@/components/ConfidenceHistoryChart";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 
 export default function HistoryPage() {
   const { data, error, isLoading } = useSWR("history", () => api.history(undefined, 50), {
+    refreshInterval: 120_000,
+  });
+  const { data: confHist } = useSWR("conf-hist-all", () => api.confidenceHistory(undefined, 40), {
     refreshInterval: 120_000,
   });
 
@@ -22,6 +26,15 @@ export default function HistoryPage() {
 
       {isLoading && <LoadingCard />}
       {error && <ErrorState message={(error as Error).message} />}
+      {confHist && confHist.count > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold">Confidence history</h2>
+          <p className="text-sm text-muted">LONG/SHORT signals with WIN / LOSS / OPEN</p>
+          <div className="mt-3">
+            <ConfidenceHistoryChart points={confHist.points} />
+          </div>
+        </div>
+      )}
       {data && (
         <div className="card overflow-x-auto">
           <p className="mb-3 text-sm text-muted">

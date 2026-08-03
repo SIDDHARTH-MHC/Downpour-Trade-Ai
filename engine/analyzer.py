@@ -14,6 +14,7 @@ from engine.lanes.structure import analyze_structure
 from engine.lanes.technical import analyze_technical
 from engine.models import Verdict
 from engine.risk import build_trade_plan
+from engine.structure_events import detect_structure_events
 from engine.synthesizer import synthesize
 
 
@@ -53,6 +54,7 @@ def analyze_symbol(
     regime = analyze_regime(df, df_4h, symbol, btc_df, cfg, tf=tf)
 
     verdict = synthesize([technical, flow, structure], regime, cfg)
+    verdict.structure_events = detect_structure_events(df, cfg.structure.swing_fractal)
 
     mid_price: float | None = None
     if light:

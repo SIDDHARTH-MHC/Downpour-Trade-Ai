@@ -27,6 +27,14 @@ export default function BacktestsPage() {
     Object.entries(data?.buckets || {}).filter(([, stats]) => typeof stats?.win_rate === "number")
   );
 
+  const wf = data?.walk_forward || [];
+  const wfPassed = wf.length > 0 && wf.every((w) => w.accepted);
+  const totalTrades = Object.values(buckets).reduce((s, b) => s + (b.trade_count || 0), 0);
+  const avgWr =
+    totalTrades > 0
+      ? Object.values(buckets).reduce((s, b) => s + b.win_rate * b.trade_count, 0) / totalTrades
+      : null;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -53,6 +61,27 @@ export default function BacktestsPage() {
       {data?.last_error && <ErrorState message={data.last_error} />}
       {data?.last_calibrated_utc && data.last_calibrated_utc !== "never" && (
         <p className="text-sm text-muted">Last calibrated: {data.last_calibrated_utc}</p>
+      )}
+
+      {data && !data.running && Object.keys(buckets).length > 0 && (
+        <dl className="card grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-muted">Pairs calibrated</dt>
+            <dd className="text-lg font-semibold">{wf.length || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">OOS trades (buckets)</dt>
+            <dd className="text-lg font-semibold">{totalTrades}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Avg win rate</dt>
+            <dd className="text-lg font-semibold">{avgWr != null ? `${(avgWr * 100).toFixed(1)}%` : "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Walk-forward</dt>
+            <dd className="text-lg font-semibold">{wf.length ? (wfPassed ? "Passed" : "Failed") : "—"}</dd>
+          </div>
+        </dl>
       )}
 
       {isLoading && <LoadingCard />}

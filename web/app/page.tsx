@@ -3,6 +3,8 @@
 import useSWR from "swr";
 import { api, ScanResponse } from "@/lib/api";
 import { PairTable } from "@/components/PairTable";
+import { ScanExplainPanel } from "@/components/ScanExplainPanel";
+import { WatchlistPanel } from "@/components/WatchlistPanel";
 import { DataStamp, ErrorState, LoadingCard } from "@/components/DisclaimerFooter";
 
 export default function DashboardPage() {
@@ -41,8 +43,10 @@ export default function DashboardPage() {
             {data.last_scan_utc ? ` · last scan ${data.last_scan_utc}` : ""}
           </p>
           <PairTable results={data.results} />
+          <ScanExplainPanel report={data.scan_report} />
         </>
       )}
+      <WatchlistPanel />
     </div>
   );
 }

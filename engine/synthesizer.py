@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from engine.config import EngineConfig, load_config
+from engine.attribution import compute_attribution
 from engine.explanation import build_explanation
 from engine.models import LaneResult, RegimeResult, Verdict
 
@@ -33,6 +34,7 @@ def synthesize(
             reasons=[f"regime={regime.regime} → forced NO-TRADE"],
         )
         verdict.explanation = build_explanation(verdict)
+        verdict.attribution = compute_attribution(lanes, regime)
         return verdict
 
     weighted_sum = 0.0
@@ -101,4 +103,5 @@ def synthesize(
         reasons=reasons,
     )
     verdict.explanation = build_explanation(verdict)
+    verdict.attribution = compute_attribution(lanes, regime)
     return verdict

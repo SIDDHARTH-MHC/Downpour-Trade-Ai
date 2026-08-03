@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from api.limiter import limiter
 from api.cache import cached_verdict
 from api.db import Database
+from api.verdict_enrich import enrich_verdict_payload
 from engine.analyzer import analyze_symbol
 from engine.config import load_config
 
@@ -33,8 +34,10 @@ def analyze(
         payload = verdict.to_dict()
         payload["data_as_of_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         payload["request_id"] = getattr(request.state, "request_id", None)
+        db = Database()
+        enrich_verdict_payload(payload, db)
         if persist:
-            Database().save_verdict(payload)
+            db.save_verdict(payload)
         return payload
 
     return cached_verdict(cache_key, load)

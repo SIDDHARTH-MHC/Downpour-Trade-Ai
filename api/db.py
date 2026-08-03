@@ -78,6 +78,26 @@ class Database:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS alert_rules (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    actions TEXT NOT NULL DEFAULT 'LONG,SHORT',
+                    min_score REAL NOT NULL DEFAULT 35,
+                    confidence_contains TEXT NOT NULL DEFAULT '',
+                    telegram INTEGER NOT NULL DEFAULT 1,
+                    webhook_url TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS journal_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    tags TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -118,6 +138,29 @@ class Database:
         with self.connect() as conn:
             rows = conn.execute(query, params).fetchall()
         return [json.loads(row["payload"]) for row in rows]
+
+    def list_verdicts_with_outcomes(self, symbol: str | None = None, limit: int = 50) -> list[dict]:
+        query = """
+            SELECT v.id, v.payload, o.outcome, o.resolved_at
+            FROM verdicts v
+            LEFT JOIN outcomes o ON o.verdict_id = v.id
+        """
+        params: list[Any] = []
+        if symbol:
+            query += " WHERE v.symbol = ?"
+            params.append(symbol)
+        query += " ORDER BY v.id DESC LIMIT ?"
+        params.append(limit)
+        with self.connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+        items = []
+        for row in rows:
+            payload = json.loads(row["payload"])
+            payload["verdict_id"] = row["id"]
+            payload["outcome"] = row["outcome"]
+            payload["outcome_resolved_at"] = row["resolved_at"]
+            items.append(payload)
+        return items
 
     def save_scan(self, tf: str, results: list[dict]) -> None:
         with self.connect() as conn:
@@ -215,3 +258,126 @@ class Database:
                 "UPDATE outcomes SET outcome = ?, resolved_at = ? WHERE id = ?",
                 (outcome, _utcnow(), outcome_id),
             )
+
+    def list_alert_rules(self) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT id, name, enabled, actions, min_score, confidence_contains, telegram, webhook_url, created_at FROM alert_rules ORDER BY id"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def save_alert_rule(self, rule: dict) -> int:
+        with self.connect() as conn:
+            if rule.get("id"):
+                conn.execute(
+                    """
+                    UPDATE alert_rules SET name=?, enabled=?, actions=?, min_score=?, confidence_contains=?, telegram=?, webhook_url=?
+                    WHERE id=?
+                    """,
+                    (
+                        rule["name"],
+                        1 if rule.get("enabled", True) else 0,
+                        rule.get("actions", "LONG,SHORT"),
+                        float(rule.get("min_score", 35)),
+                        rule.get("confidence_contains", ""),
+                        1 if rule.get("telegram", True) else 0,
+                        rule.get("webhook_url", ""),
+                        rule["id"],
+                    ),
+                )
+                return int(rule["id"])
+            cur = conn.execute(
+                """
+                INSERT INTO alert_rules (name, enabled, actions, min_score, confidence_contains, telegram, webhook_url, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    rule["name"],
+                    1 if rule.get("enabled", True) else 0,
+                    rule.get("actions", "LONG,SHORT"),
+                    float(rule.get("min_score", 35)),
+                    rule.get("confidence_contains", ""),
+                    1 if rule.get("telegram", True) else 0,
+                    rule.get("webhook_url", ""),
+                    _utcnow(),
+                ),
+            )
+            return int(cur.lastrowid)
+
+    def delete_alert_rule(self, rule_id: int) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM alert_rules WHERE id = ?", (rule_id,))
+
+    def list_journal(self, limit: int = 50) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT id, symbol, title, body, tags, created_at, updated_at FROM journal_entries ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def save_journal(self, entry: dict) -> int:
+        with self.connect() as conn:
+            if entry.get("id"):
+                conn.execute(
+                    """
+                    UPDATE journal_entries SET symbol=?, title=?, body=?, tags=?, updated_at=? WHERE id=?
+                    """,
+                    (
+                        entry.get("symbol") or "",
+                        entry["title"],
+                        entry["body"],
+                        entry.get("tags") or "",
+                        _utcnow(),
+                        entry["id"],
+                    ),
+                )
+                return int(entry["id"])
+            cur = conn.execute(
+                """
+                INSERT INTO journal_entries (symbol, title, body, tags, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry.get("symbol") or "",
+                    entry["title"],
+                    entry["body"],
+                    entry.get("tags") or "",
+                    _utcnow(),
+                    _utcnow(),
+                ),
+            )
+            return int(cur.lastrowid)
+
+    def delete_journal(self, entry_id: int) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM journal_entries WHERE id = ?", (entry_id,))
+
+    def get_integration_urls(self) -> dict[str, str]:
+        return {
+            "discord_webhook_url": self.get_meta("discord_webhook_url", ""),
+            "slack_webhook_url": self.get_meta("slack_webhook_url", ""),
+        }
+
+    def set_integration_urls(self, discord: str, slack: str) -> None:
+        self.set_meta("discord_webhook_url", discord.strip())
+        self.set_meta("slack_webhook_url", slack.strip())
+
+    def get_verdict_by_id(self, verdict_id: int) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT v.payload, o.outcome
+                FROM verdicts v
+                LEFT JOIN outcomes o ON o.verdict_id = v.id
+                WHERE v.id = ?
+                """,
+                (verdict_id,),
+            ).fetchone()
+        if not row:
+            return None
+        payload = json.loads(row["payload"])
+        payload["verdict_id"] = verdict_id
+        payload["outcome"] = row["outcome"]
+        return payload
+

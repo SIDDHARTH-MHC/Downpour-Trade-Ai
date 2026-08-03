@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import time
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -234,3 +236,23 @@ class DataLayer:
     def is_major(symbol: str) -> bool:
         base = symbol.split("/")[0]
         return base in {"BTC", "ETH"}
+
+    def get_macro_snapshot(self) -> dict[str, Any]:
+        """CoinGecko global metrics (cached ~5 min in memory on caller)."""
+        url = "https://api.coingecko.com/api/v3/global"
+        try:
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                raw = json.loads(resp.read().decode())
+            data = raw.get("data") or {}
+            pct = data.get("market_cap_percentage") or {}
+            return {
+                "btc_dominance": float(pct.get("btc", 0)),
+                "eth_dominance": float(pct.get("eth", 0)),
+                "total_market_cap_usd": float(data.get("total_market_cap", {}).get("usd", 0)),
+                "total_volume_usd": float(data.get("total_volume", {}).get("usd", 0)),
+                "market_cap_change_24h_pct": float(data.get("market_cap_change_percentage_24h_usd", 0)),
+                "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {"error": str(exc), "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}

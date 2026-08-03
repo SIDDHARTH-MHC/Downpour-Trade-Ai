@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, Request
@@ -56,6 +57,8 @@ def scan(
 
     results = db.latest_scan(tf)
     actionable = [r for r in results if r.get("action") != "NO_TRADE"]
+    raw_report = db.get_meta("last_scan_report", "")
+    scan_report = json.loads(raw_report) if raw_report else None
     return {
         "app": "Downpour Trade AI",
         "status": "ok",
@@ -69,4 +72,5 @@ def scan(
         "actionable_count": len(actionable),
         "results": results,
         "actionable": actionable,
+        "scan_report": scan_report,
     }
