@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTableFrame } from "@/components/data/DataTableFrame";
+import { DataTableFrame } from "@/components/tables/DataTableFrame";
 
 type BucketRow = {
   bucket: string;

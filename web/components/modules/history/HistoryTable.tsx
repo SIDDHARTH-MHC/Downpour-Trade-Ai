@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Verdict } from "@/lib/api";
 import { VerdictChip } from "@/components/shared/VerdictChip";
-import { DataTableFrame } from "@/components/data/DataTableFrame";
+import { DataTableFrame } from "@/components/tables/DataTableFrame";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 
