@@ -254,6 +254,16 @@ async function fetchJson<T>(path: string): Promise<T> {
   }
 }
 
+async function fetchInternalJson<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, { cache: "no-store", ...init });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`API ${path} failed: ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export const api = {
   analyze: (symbol: string, tf = "1h") =>
     fetchJson<Verdict>(`/analyze?symbol=${encodeURIComponent(symbol)}&tf=${tf}`),
@@ -377,6 +387,28 @@ export const api = {
     }).then(async (res) => {
       if (!res.ok) throw new Error("Save integrations failed");
       return res.json();
+    }),
+  researchDashboard: () =>
+    fetchInternalJson<ResearchDashboardResponse>("/internal/research/v1/dashboard"),
+  researchPromotionDecide: (
+    runId: string,
+    body: {
+      decision: "PROMOTED" | "REJECTED" | "DEFERRED";
+      reason: string;
+      approved_by: string;
+      promotion_class?: string;
+    }
+  ) =>
+    fetchInternalJson<{ run_id: string; decision: string; note: string }>(
+      `/internal/research/v1/promotion-queue/${encodeURIComponent(runId)}/decide`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    ).then((data) => {
+      if (data === null) throw new Error("Internal research API is disabled (404)");
+      return data;
     }),
 };
 
@@ -542,3 +574,38 @@ export type IntegrationsResponse = {
   telegram_configured: boolean;
   note: string;
 };
+
+export type ResearchDashboardResponse = {
+  data_as_of_utc: string;
+  internal_api_enabled: boolean;
+  research_db_enabled: boolean;
+  research_scheduler_enabled: boolean;
+  promotion_policy: string;
+  database: Record<string, unknown>;
+  scheduler: { running: boolean; jobs: Array<{ id: string; next_run_utc: string | null; trigger: string }> };
+  automation: Record<string, unknown>;
+  collector: { last_run: Record<string, unknown> | null; watermarks: Array<Record<string, unknown>> };
+  data_quality: {
+    enabled: boolean;
+    summary: Record<string, number>;
+    reports: Array<Record<string, unknown>>;
+  };
+  datasets: Array<Record<string, unknown>>;
+  storage: {
+    filesystem: { bytes_by_path: Record<string, number>; total_bytes: number };
+    timescale: Record<string, unknown>;
+  };
+  walk_forward: { last: Record<string, unknown> | null; recent_runs: Array<Record<string, unknown>> };
+  calibration: Record<string, unknown>;
+  promotion_queue: Array<Record<string, unknown>>;
+  promotion_history: Array<Record<string, unknown>>;
+  experiments: Array<Record<string, unknown>>;
+  logs: Array<{ kind: string; at: string; status?: string; detail?: unknown }>;
+};
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}

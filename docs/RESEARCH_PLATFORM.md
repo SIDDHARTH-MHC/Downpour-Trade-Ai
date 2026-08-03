@@ -44,6 +44,21 @@ python cli.py research run walk-forward
 
 Dev-only dedicated loop: `python cli.py research scheduler --foreground`
 
+### Internal Research Ops dashboard (web)
+
+Route: **`/research-ops`** in the Next.js app (System → Research ops).
+
+Requires on the **API** host:
+
+```bash
+RESEARCH_INTERNAL_API_ENABLED=true
+RESEARCH_DB_ENABLED=true   # for MDS sections
+```
+
+Single snapshot: `GET /internal/research/v1/dashboard` — scheduler next runs, collector watermarks, DQ reports, dataset versions, storage/Timescale size, walk-forward runs, calibration status, promotion queue (Approve / Defer / Reject), experiment history, activity log.
+
+Manual promotion: `POST /internal/research/v1/promotion-queue/{run_id}/decide` — records decision only; never auto-deploys engine config.
+
 **Promotion:** schedulers never apply config promotion. Walk-forward runs record artifacts only; humans approve promotion per `Research_Roadmap.md`.
 
 Legacy manual env (if not using `--enable`):

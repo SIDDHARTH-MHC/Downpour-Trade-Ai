@@ -18,6 +18,7 @@ import {
   Sparkles,
   TrendingUp,
   Waves,
+  FlaskConical,
 } from "lucide-react";
 import type { WorkspaceId } from "@/lib/workspace-prefs";
 import { getWorkspacePreset } from "@/lib/workspace-prefs";
@@ -57,6 +58,14 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "alerts", label: "Alerts", href: "/alerts", icon: Bell, section: "workspace" },
   { id: "coach", label: "Coach", href: "/coach", icon: Sparkles, section: "workspace" },
   { id: "backtests", label: "Backtests", href: "/backtests", icon: ScrollText, section: "system" },
+  {
+    id: "research-ops",
+    label: "Research ops",
+    href: "/research-ops",
+    icon: FlaskConical,
+    section: "system",
+    keywords: ["mds", "internal", "promotion", "scheduler"],
+  },
   { id: "status", label: "Status", href: "/status", icon: Activity, section: "system", keywords: ["health"] },
   { id: "integrations", label: "Integrations", href: "/integrations", icon: Plug, section: "system" },
   { id: "glossary", label: "Glossary", href: "/glossary", icon: BookOpen, section: "system" },

@@ -321,3 +321,23 @@ def stop_scheduler() -> None:
     if _scheduler:
         _scheduler.shutdown(wait=False)
         _scheduler = None
+
+
+def scheduler_jobs_snapshot() -> dict:
+    """Job next/last run hints for internal dashboard (UTC)."""
+    global _scheduler
+    if _scheduler is None:
+        return {"running": False, "jobs": []}
+    jobs = []
+    for job in _scheduler.get_jobs():
+        nrt = job.next_run_time
+        jobs.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run_utc": nrt.isoformat() if nrt else None,
+                "trigger": str(job.trigger),
+            }
+        )
+    jobs.sort(key=lambda j: j["id"] or "")
+    return {"running": True, "jobs": jobs}
