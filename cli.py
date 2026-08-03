@@ -149,6 +149,28 @@ def scan(
 research_app = typer.Typer(help="Walk-forward experiments (see Research_Roadmap.md)")
 app.add_typer(research_app, name="research")
 
+research_db_app = typer.Typer(help="Research MDS database (PostgreSQL/Timescale; optional)")
+research_app.add_typer(research_db_app, name="db")
+
+
+@research_db_app.command("status")
+def research_db_status() -> None:
+    """Show research DB configuration and connectivity."""
+    from research_platform.cli_db import print_status
+
+    print_status()
+
+
+@research_db_app.command("migrate")
+def research_db_migrate() -> None:
+    """Apply Alembic migrations to the research database."""
+    from research_platform.cli_db import cmd_migrate
+
+    code = cmd_migrate()
+    if code != 0:
+        raise typer.Exit(code=code)
+    console.print("[green]Research DB migrations applied.[/green]")
+
 
 @research_app.command("walk-forward")
 def research_walk_forward(

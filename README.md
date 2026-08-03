@@ -63,6 +63,7 @@ engine/     Deterministic signal core (unchanged by API/web)
 api/        FastAPI wrapper, scheduler, SQLite, Telegram alerts
 web/        Next.js dashboard
 research/   Walk-forward experiment runner (promotion gate)
+research_platform/  Optional PostgreSQL/Timescale MDS (see docs/RESEARCH_PLATFORM.md)
 ```
 
 **Research:** Before changing lane scores, run `python cli.py research walk-forward --compare` and record results in `research/experiments/`. See `Research_Roadmap.md` and `.cursor/rules/engine-promotion-gate.mdc`.

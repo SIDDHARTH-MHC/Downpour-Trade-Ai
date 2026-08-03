@@ -1,0 +1,22 @@
+"""Optional local TimescaleDB for research (does not affect production SQLite API)."""
+
+services:
+  research-db:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: downpour
+      POSTGRES_PASSWORD: downpour
+      POSTGRES_DB: downpour_research
+    ports:
+      - "5433:5432"
+    volumes:
+      - downpour-research-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U downpour -d downpour_research"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  downpour-research-pg:
